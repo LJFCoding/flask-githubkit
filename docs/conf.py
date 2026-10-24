@@ -1,6 +1,6 @@
 project = "flask-githubkit"
 author = "LJFCoding"
-release = "0.1.2"
+release = "0.1.3"
 
 extensions = [
     "myst_parser",

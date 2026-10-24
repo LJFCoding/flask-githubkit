@@ -4,6 +4,8 @@ A Flask extension for GitHub OAuth login, built on
 [GitHubKit](https://github.com/yanyongyu/githubkit). It handles expiring-token
 refresh and stores tokens in `flask.session`.
 
+Documentation: [flask-githubkit.readthedocs.io](https://flask-githubkit.readthedocs.io/en/latest/)
+
 ## Installation
 
 Install the latest release from PyPI:
@@ -15,8 +17,8 @@ pip install flask-githubkit
 To pin a release or install directly from GitHub:
 
 ```console
-pip install "flask-githubkit==0.1.2"
-pip install "flask-githubkit @ git+https://github.com/LJFCoding/flask-githubkit.git@v0.1.2"
+pip install "flask-githubkit==0.1.3"
+pip install "flask-githubkit @ git+https://github.com/LJFCoding/flask-githubkit.git@v0.1.3"
 ```
 
 It requires Python 3.10+ and installs Flask, GitHubKit and httpx.
