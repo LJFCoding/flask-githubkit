@@ -51,7 +51,7 @@ class GitHubOAuth:
         app.register_error_handler(AuthExpiredError, self._handle_expired)
 
     def authorize(self) -> Result:
-        configuration = OAuthConfiguration.from_app()
+        configuration = OAuthConfiguration.from_current_app()
         if configuration is None:
             return self._error("GitHub OAuth is not configured.", 500)
 
@@ -61,7 +61,7 @@ class GitHubOAuth:
         query = urlencode(
             {
                 "client_id": configuration.client_id,
-                "redirect_uri": configuration.callback_url,
+                "redirect_uri": configuration.redirect_uri,
                 "scope": self.scope,
                 "state": state,
             }
@@ -83,7 +83,7 @@ class GitHubOAuth:
             if not code:
                 return self._error("GitHub did not return an authorization code.", 400)
 
-            configuration = OAuthConfiguration.from_app()
+            configuration = OAuthConfiguration.from_current_app()
             if configuration is None:
                 return self._error("GitHub OAuth is not configured.", 500)
 
@@ -105,7 +105,7 @@ class GitHubOAuth:
             cached: GitHub[Any] = flask.g.github_client
             return cached
 
-        configuration = OAuthConfiguration.from_app()
+        configuration = OAuthConfiguration.from_current_app()
         if configuration is None:
             return None
         token_auth = self.store.load(configuration)
@@ -140,7 +140,7 @@ class GitHubOAuth:
             client_secret=configuration.client_secret,
         )
         return oauth_app.as_web_user(
-            code, redirect_uri=configuration.callback_url
+            code, redirect_uri=configuration.redirect_uri
         ).exchange_token(GitHub(auth=oauth_app))
 
     def _handle_expired(self, error: AuthExpiredError) -> Response:
