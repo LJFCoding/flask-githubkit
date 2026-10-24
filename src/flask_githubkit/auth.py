@@ -133,9 +133,14 @@ class GitHub:
         refreshes an expired access token itself; the refreshed values
         are saved to the session at the end of the request.
         """
-        cached: githubkit.GitHub[typing.Any] | None = getattr(
+        clients: dict[GitHub, githubkit.GitHub[typing.Any]] | None = getattr(
             flask.g, CLIENT_ATTR, None
         )
+        if clients is None:
+            clients = {}
+            setattr(flask.g, CLIENT_ATTR, clients)
+
+        cached = clients.get(self)
         if cached is not None:
             return cached
 
@@ -155,11 +160,12 @@ class GitHub:
 
         flask.after_this_request(_save)
         github = githubkit.GitHub(auth=strategy)
-        setattr(flask.g, CLIENT_ATTR, github)
+        clients[self] = github
         return github
 
     def logout(self) -> None:
         flask_githubkit.store.Token.clear()
+        flask.g.pop(CLIENT_ATTR, None)
 
     @staticmethod
     def _config() -> flask_githubkit.config.Config | None:
