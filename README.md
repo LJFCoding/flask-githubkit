@@ -31,9 +31,10 @@ app.config.update(
     GITHUB_CLIENT_ID="your-client-id",
     GITHUB_CLIENT_SECRET="load-this-from-a-secret-manager",
     GITHUB_REDIRECT_URI="https://example.com/callback",
+    GITHUB_SCOPE="read:user",
 )
 
-github = flask_githubkit.GitHub(app, scope="read:user")
+github = flask_githubkit.GitHub(app)
 
 
 @app.route("/login")
@@ -69,7 +70,7 @@ With an application factory, create the extension once and initialize it for
 each app:
 
 ```python
-github = flask_githubkit.GitHub(scope="read:user")
+github = flask_githubkit.GitHub()
 
 
 def create_app():
@@ -79,6 +80,7 @@ def create_app():
         GITHUB_CLIENT_ID="your-client-id",
         GITHUB_CLIENT_SECRET="load-this-from-a-secret-manager",
         GITHUB_REDIRECT_URI="https://example.com/callback",
+        GITHUB_SCOPE="read:user",
     )
     github.init_app(app)
     return app
@@ -92,10 +94,12 @@ def create_app():
 | `GITHUB_CLIENT_SECRET` | Yes | GitHub OAuth App client secret |
 | `GITHUB_REDIRECT_URI` | Yes | Callback URL registered with the OAuth App |
 | `SECRET_KEY` | Yes | Flask session signing key |
+| `GITHUB_SCOPE` | No | Space-separated OAuth scopes to request. Default `read:user`. |
 | `GITHUB_LOGIN_VIEW` | No | Endpoint name users are sent to when their refresh token has expired. Default `login`; use `auth.login` for a `login` view in a blueprint named `auth`. It is an endpoint name, not a URL. |
 
-`flask_githubkit.GitHub(app=None, *, scope="read:user")` accepts an optional
-Flask app. Use `init_app(app)` to initialize it later.
+`flask_githubkit.GitHub(app=None)` accepts an optional Flask app. Use
+`init_app(app)` to initialize it later. All settings come from the Flask
+config keys above.
 
 - `login()` starts the OAuth flow and redirects to GitHub.
 - `@callback` wraps the callback view.
