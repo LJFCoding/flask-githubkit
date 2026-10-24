@@ -1,5 +1,7 @@
 from urllib.parse import parse_qs, urlparse
 
+from flask_githubkit import auth as auth_module
+
 
 def test_login_redirects_to_github_with_state_scope_and_callback(client):
     response = client.get("/login")
@@ -28,3 +30,77 @@ def test_login_reports_missing_configuration(app, client):
     assert response.status_code == 500
     assert response.get_json() == {"message": "GitHub OAuth is not configured."}
 
+
+def test_callback_rejects_invalid_state(client):
+    response = client.get("/callback?state=wrong&code=example")
+
+    assert response.status_code == 400
+    assert response.get_json() == {"message": "Invalid OAuth state."}
+
+
+def test_callback_passes_none_when_access_is_denied(client):
+    with client.session_transaction() as session:
+        session["github_oauth_state"] = "expected"
+
+    response = client.get("/callback?state=expected&error=access_denied")
+
+    assert response.status_code == 400
+    assert response.get_json() == {"message": "denied"}
+
+
+def test_callback_requires_a_code(client):
+    with client.session_transaction() as session:
+        session["github_oauth_state"] = "expected"
+
+    response = client.get("/callback?state=expected")
+
+    assert response.status_code == 400
+    assert response.get_json() == {
+        "message": "GitHub did not return an authorization code."
+    }
+
+
+def test_callback_exchanges_code_and_stores_tokens(client, monkeypatch):
+    with client.session_transaction() as session:
+        session["github_oauth_state"] = "expected"
+    calls = {}
+
+    class FakeWebAuth:
+        def exchange_token(self, github):
+            calls["github"] = github
+            return type(
+                "FakeToken",
+                (),
+                {
+                    "token": "access-token",
+                    "refresh_token": "refresh-token",
+                    "expire_time": None,
+                    "refresh_token_expire_time": None,
+                },
+            )()
+
+    class FakeOAuthApp:
+        def __init__(self, *, client_id, client_secret):
+            calls["credentials"] = (client_id, client_secret)
+
+        def as_web_user(self, code, *, redirect_uri):
+            calls["web_auth"] = (code, redirect_uri)
+            return FakeWebAuth()
+
+    class FakeGitHub:
+        def __init__(self, *, auth):
+            self.auth = auth
+
+    monkeypatch.setattr(auth_module, "OAuthAppAuthStrategy", FakeOAuthApp)
+    monkeypatch.setattr(auth_module, "GitHub", FakeGitHub)
+
+    response = client.get("/callback?state=expected&code=oauth-code")
+
+    assert response.get_json() == {"message": "ok", "token": "access-token"}
+    assert calls["credentials"] == ("client-id", "client-secret")
+    assert calls["web_auth"] == ("oauth-code", "http://localhost:5000/callback")
+    assert isinstance(calls["github"].auth, FakeOAuthApp)
+    with client.session_transaction() as session:
+        assert session["github_token"]["token"] == "access-token"
+        assert session["github_token"]["refresh_token"] == "refresh-token"
+        assert session.permanent
