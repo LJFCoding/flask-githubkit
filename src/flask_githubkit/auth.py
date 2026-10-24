@@ -14,7 +14,7 @@ import githubkit.exception
 import werkzeug.wrappers
 
 import flask_githubkit.config
-import flask_githubkit.token
+import flask_githubkit.store
 
 AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
 STATE_KEY = "flask_githubkit.state"
@@ -35,7 +35,7 @@ class GitHub:
     their refresh token has expired.
 
     ``scope`` is the space-separated OAuth scope to request. Tokens are
-    kept by ``token.Store`` in ``flask.session``.
+    kept by ``store.Token`` in ``flask.session``.
     """
 
     def __init__(
@@ -47,7 +47,6 @@ class GitHub:
     ) -> None:
         self.scope = scope
         self.login_view = login_view
-        self.store = flask_githubkit.token.Store()
         if app is not None:
             self.init_app(app)
 
@@ -84,7 +83,7 @@ class GitHub:
                 return self._error("GitHub OAuth is not configured.", 500)
 
             strategy = self._exchange(code, config)
-            self.store.save(strategy)
+            flask_githubkit.store.Token.save(strategy)
             return view_func(strategy.token, *args, **kwargs)
 
         return wrapper
@@ -106,15 +105,15 @@ class GitHub:
         config = self._config()
         if config is None:
             return None
-        strategy = self.store.load(config)
+        strategy = flask_githubkit.store.Token.load(config)
         if strategy is None:
             return None
 
         def _save(
             response: werkzeug.wrappers.Response,
         ) -> werkzeug.wrappers.Response:
-            if self.store.has_token():
-                self.store.save(strategy)
+            if flask_githubkit.store.Token.exists():
+                flask_githubkit.store.Token.save(strategy)
             return response
 
         flask.after_this_request(_save)
@@ -123,7 +122,7 @@ class GitHub:
         return github
 
     def logout(self) -> None:
-        self.store.clear()
+        flask_githubkit.store.Token.clear()
 
     @staticmethod
     def _config() -> flask_githubkit.config.Config | None:

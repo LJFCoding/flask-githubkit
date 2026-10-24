@@ -107,7 +107,7 @@ The extension registers an `AuthExpiredError` handler that clears the stored
 token and redirects to `login_view`.
 
 `flask_githubkit.Config.from_current_app()` reads the configuration keys above.
-`flask_githubkit.Store` serializes token expiry datetimes as ISO-formatted
+`flask_githubkit.Token` serializes token expiry datetimes as ISO-formatted
 strings in `flask.session`.
 
 ## Sessions, token refresh, and limitations
