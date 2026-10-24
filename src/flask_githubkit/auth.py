@@ -19,6 +19,7 @@ import flask_githubkit.store
 AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
 CLIENT_ATTR = "flask_githubkit_client"
 LOGIN_VIEW = "login"
+LOGIN_MARK = "_flask_githubkit_login"
 
 ViewResult = (
     werkzeug.wrappers.Response | tuple[werkzeug.wrappers.Response, int]
@@ -37,8 +38,10 @@ class GitHub:
 
     ``scope`` and ``login_view`` may be given here. When they are not,
     they come from ``GITHUB_SCOPE`` and ``GITHUB_LOGIN_VIEW`` in the
-    Flask config, and then from the defaults (``read:user`` and
-    ``login``). Tokens are kept by ``store.Token`` in ``flask.session``.
+    Flask config. The scope then defaults to ``read:user``. The login
+    view defaults to the view decorated with ``@login``, or to
+    ``login`` if there is none. Tokens are kept by ``store.Token`` in
+    ``flask.session``.
     """
 
     def __init__(
@@ -83,6 +86,7 @@ class GitHub:
         def wrapper(*args: typing.Any, **kwargs: typing.Any) -> ViewResult:
             return self._redirect()
 
+        setattr(wrapper, LOGIN_MARK, self)
         return wrapper
 
     def _redirect(self) -> ViewResult:
@@ -194,8 +198,11 @@ class GitHub:
         self, error: githubkit.exception.AuthExpiredError
     ) -> werkzeug.wrappers.Response:
         self.logout()
-        view = self.login_view or flask.current_app.config.get(
-            "GITHUB_LOGIN_VIEW", LOGIN_VIEW
+        view = (
+            self.login_view
+            or flask.current_app.config.get("GITHUB_LOGIN_VIEW")
+            or self._decorated_endpoint()
+            or LOGIN_VIEW
         )
         try:
             return flask.redirect(flask.url_for(view))
@@ -205,6 +212,13 @@ class GitHub:
                 "Use the endpoint name, such as 'auth.login' for a "
                 "blueprint named 'auth'."
             ) from build_error
+
+    def _decorated_endpoint(self) -> str | None:
+        """Return the endpoint of the view decorated with ``@login``."""
+        for endpoint, view in flask.current_app.view_functions.items():
+            if getattr(view, LOGIN_MARK, None) is self:
+                return endpoint
+        return None
 
     @staticmethod
     def _error(
