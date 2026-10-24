@@ -1,8 +1,8 @@
 """Blueprint: login and callback live under ``/auth``.
 
-``login_view`` is a Flask *endpoint name*, not a URL. For a blueprint
-called ``auth`` with a ``login`` view it is ``"auth.login"``. The
-callback URL registered in your OAuth App must then be
+``@github.login`` marks the view, so after an expired refresh token the
+user is sent to ``auth.login`` without any ``login_view`` setting. The
+callback URL registered in your OAuth App must be
 ``http://localhost:5000/auth/callback``.
 
 Run it with::
@@ -17,7 +17,7 @@ import flask
 
 import flask_githubkit
 
-github = flask_githubkit.GitHub(login_view="auth.login")
+github = flask_githubkit.GitHub()
 
 auth = flask.Blueprint("auth", __name__, url_prefix="/auth")
 
