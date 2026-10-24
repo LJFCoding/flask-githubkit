@@ -9,6 +9,7 @@ import flask
 import githubkit
 import githubkit.auth
 import githubkit.exception
+import httpx
 import werkzeug.routing
 import werkzeug.wrappers
 
@@ -75,7 +76,10 @@ class GitHub:
             if config is None:
                 return self._error("GitHub OAuth is not configured.", 500)
 
-            strategy = self._exchange(code, config)
+            try:
+                strategy = self._exchange(code, config)
+            except (githubkit.exception.RequestError, httpx.HTTPError):
+                return self._error("Could not reach GitHub.", 502)
             flask_githubkit.store.Token.save(strategy)
             return view_func(strategy.token, *args, **kwargs)
 
