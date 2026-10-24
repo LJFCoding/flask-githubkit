@@ -1,6 +1,7 @@
 from urllib.parse import parse_qs, urlparse
 
 import flask
+from githubkit.exception import AuthExpiredError
 
 from flask_githubkit import auth as auth_module
 
@@ -156,3 +157,28 @@ def test_refreshed_token_is_written_back_to_session(app, github, client):
     with client.session_transaction() as session:
         assert session["github_token"]["token"] == "new-token"
         assert session["github_token"]["refresh_token"] == "new-refresh"
+
+
+def test_logout_removes_stored_token(app, github):
+    with app.test_request_context():
+        flask.session["github_token"] = TOKEN
+
+        github.logout()
+
+        assert "github_token" not in flask.session
+
+
+def test_expired_refresh_token_clears_session_and_redirects_to_login(app, client):
+    @app.route("/expired")
+    def expired():
+        raise AuthExpiredError("Refresh token expired.")
+
+    with client.session_transaction() as session:
+        session["github_token"] = TOKEN
+
+    response = client.get("/expired")
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/login")
+    with client.session_transaction() as session:
+        assert "github_token" not in session
