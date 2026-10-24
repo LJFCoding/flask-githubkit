@@ -6,7 +6,7 @@ profile route that calls GitHub, and logout.
 ## Before you start
 
 1. [Install the package](installation.md).
-2. [Create a GitHub OAuth App](installation.md).
+2. [Create a GitHub OAuth App](installation.md#register-a-github-oauth-app).
 3. Set its callback URL to `http://localhost:5000/callback`.
 
 For local development, provide the OAuth credentials and a Flask secret in
@@ -93,6 +93,12 @@ flask --app app run
 Open `http://localhost:5000/` and choose **Sign in with GitHub**.
 Completing the flow requires a working OAuth App and network access to
 GitHub.
+
+```{note}
+On recent macOS versions, AirPlay Receiver can occupy port 5000. If Flask
+cannot bind to it, disable AirPlay Receiver or run on another port, and
+use the same port in `GITHUB_REDIRECT_URI` and the OAuth App's callback URL.
+```
 
 ## What happens during login
 
