@@ -695,3 +695,58 @@ def test_constructor_login_view_accepts_a_blueprint_endpoint():
     response = app.test_client().get("/expired")
 
     assert response.headers["Location"].endswith("/auth/login")
+
+
+def make_decorated_app(**config):
+    app = flask.Flask(__name__)
+    app.config.update(
+        TESTING=True,
+        SECRET_KEY="test-secret",
+        GITHUB_CLIENT_ID="client-id",
+        GITHUB_CLIENT_SECRET="client-secret",
+        GITHUB_REDIRECT_URI="http://localhost:5000/callback",
+        **config,
+    )
+    github = flask_githubkit.GitHub(app)
+
+    @app.route("/login")
+    @github.login
+    def login():
+        raise AssertionError("the decorated body must not run")
+
+    return app
+
+
+def test_login_works_as_a_decorator():
+    response = make_decorated_app().test_client().get("/login")
+
+    location = urllib.parse.urlparse(response.headers["Location"])
+    assert response.status_code == 302
+    assert location.netloc == "github.com"
+    assert location.path == "/login/oauth/authorize"
+
+
+def test_decorated_login_keeps_the_view_name_for_url_for():
+    app = make_decorated_app()
+
+    with app.test_request_context():
+        assert flask.url_for("login") == "/login"
+
+
+def test_decorated_login_uses_the_configured_scope():
+    app = make_decorated_app(GITHUB_SCOPE="repo")
+
+    assert scope_of(app.test_client()) == ["repo"]
+
+
+def test_decorated_login_reports_missing_configuration():
+    app = flask.Flask(__name__)
+    github = flask_githubkit.GitHub(app)
+    app.add_url_rule("/login", "login", github.login(lambda: None))
+
+    response = app.test_client().get("/login")
+
+    assert response.status_code == 500
+    assert response.get_json() == {
+        "message": "GitHub OAuth is not configured."
+    }
