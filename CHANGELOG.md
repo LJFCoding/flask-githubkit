@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.2
+
+- Clear the request-cached GitHubKit client on logout, so logging out
+  takes effect immediately in the same request.
+- Keep request-cached clients separate for each `GitHub` extension
+  instance.
+
 ## 0.1.1
 
 - `@github.login` marks the view it decorates, and an expired refresh
