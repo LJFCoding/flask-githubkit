@@ -124,33 +124,33 @@ def test_callback_exchanges_code_and_stores_tokens(http_client, monkeypatch):
         assert session.permanent
 
 
-def test_client_is_none_when_signed_out(app, oauth):
+def test_client_is_none_when_signed_out(app, github):
     with app.test_request_context():
-        assert oauth.client() is None
+        assert github.client() is None
 
 
-def test_client_is_cached_per_request(app, oauth):
+def test_client_is_cached_per_request(app, github):
     with app.test_request_context():
         flask.session["flask_githubkit.token"] = SAMPLE_TOKEN
 
-        assert oauth.client() is oauth.client()
+        assert github.client() is github.client()
 
 
-def test_invalid_stored_token_is_cleared(app, oauth):
+def test_invalid_stored_token_is_cleared(app, github):
     with app.test_request_context():
         flask.session["flask_githubkit.token"] = {
             "token": None,
             "refresh_token": None,
         }
 
-        assert oauth.client() is None
+        assert github.client() is None
         assert "flask_githubkit.token" not in flask.session
 
 
-def test_refreshed_token_is_written_back_to_session(app, oauth, http_client):
+def test_refreshed_token_is_written_back_to_session(app, github, http_client):
     @app.route("/refresh")
     def refresh():
-        api = oauth.client()
+        api = github.client()
         # Stand-in for GitHubKit refreshing the token in place during a call.
         api.auth.token = "new-token"
         api.auth.refresh_token = "new-refresh"
@@ -172,11 +172,11 @@ def test_refreshed_token_is_written_back_to_session(app, oauth, http_client):
         )
 
 
-def test_logout_removes_stored_token(app, oauth):
+def test_logout_removes_stored_token(app, github):
     with app.test_request_context():
         flask.session["flask_githubkit.token"] = SAMPLE_TOKEN
 
-        oauth.logout()
+        github.logout()
 
         assert "flask_githubkit.token" not in flask.session
 
