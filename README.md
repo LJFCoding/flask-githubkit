@@ -9,7 +9,7 @@ refresh and stores tokens in `flask.session`.
 Install the release directly from GitHub:
 
 ```console
-pip install "flask-githubkit @ git+https://github.com/LJFCoding/flask-githubkit.git@v0.1.0"
+pip install "flask-githubkit @ git+https://github.com/LJFCoding/flask-githubkit.git@v0.1.1"
 ```
 
 It is not published on PyPI yet, so `pip install flask-githubkit` will not
