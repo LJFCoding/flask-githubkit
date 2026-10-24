@@ -81,3 +81,57 @@ def create_app():
     github.init_app(app)
     return app
 ```
+
+## Configuration and API
+
+| Flask config key | Required | Purpose |
+| --- | --- | --- |
+| `GITHUB_CLIENT_ID` | Yes | GitHub OAuth App client ID |
+| `GITHUB_CLIENT_SECRET` | Yes | GitHub OAuth App client secret |
+| `GITHUB_REDIRECT_URI` | Yes | Callback URL registered with the OAuth App |
+| `SECRET_KEY` | Yes | Flask session signing key |
+
+`GitHubOAuth(app=None, *, scope="read:user", login_endpoint="login")` accepts an
+optional Flask app. Use `init_app(app)` to initialize it later.
+
+- `authorize()` starts the OAuth flow and redirects to GitHub.
+- `@authorized_handler` wraps the callback view.
+- `client()` returns the request-cached GitHubKit `GitHub` client, or `None`
+  when there is no valid stored token.
+- `logout()` removes the stored GitHub token from the session.
+
+The extension registers an `AuthExpiredError` handler that clears the stored
+token and redirects to `login_endpoint`.
+
+`OAuthConfiguration.from_app()` reads the configuration keys above.
+`TokenStore` serializes token expiry datetimes as ISO-formatted strings in
+`flask.session`.
+
+## Sessions, token refresh, and limitations
+
+The default Flask session is a signed, client-side cookie; it is **not
+encrypted**, so users can read its contents. This package stores OAuth token
+data there, so use a server-side session backend such as Flask-Session with
+Redis in production. The extension only uses `flask.session` and marks the
+session permanent when it saves tokens. Configure your backend and
+`PERMANENT_SESSION_LIFETIME` (for example, 30 days) in your application; sliding
+expiry and TTL behavior depend on that backend and are not provided by this
+package.
+
+GitHubKit refreshes expired access tokens when the client is used. The extension
+writes updated token values back to the session after the request. GitHub
+refresh tokens are single-use, so concurrent requests can race while refreshing;
+this package does not provide a distributed lock.
+
+This package supports synchronous Flask apps and GitHub OAuth Apps. It does not
+support GitHub Apps or configure GitHub Enterprise endpoints. Real GitHub code
+exchange and refresh, Redis operation, and Flask-Session TTL behavior require
+integration testing against those services and are not verified by the
+automated tests in this repository.
+
+## Tests
+
+```console
+pip install -e ".[test]"
+pytest
+```
