@@ -1,6 +1,8 @@
-"""Store a user's GitHub tokens in the Flask session."""
+"""Everything flask_githubkit keeps in the Flask session."""
 
 import datetime
+import hmac
+import secrets
 
 import flask
 import githubkit.auth
@@ -8,11 +10,12 @@ import githubkit.exception
 
 import flask_githubkit.config
 
-SESSION_KEY = "flask_githubkit.token"
+TOKEN_KEY = "flask_githubkit.token"
+STATE_KEY = "flask_githubkit.state"
 DATETIME_KEYS = ("expire_time", "refresh_token_expire_time")
 
 
-class Store:
+class Token:
     """Keeps a user's GitHub tokens in ``flask.session``.
 
     With a server-side session backend such as Redis, the browser only
@@ -32,13 +35,13 @@ class Store:
             payload[key] = value.isoformat() if value else None
 
         flask.session.permanent = True
-        flask.session[SESSION_KEY] = payload
+        flask.session[TOKEN_KEY] = payload
 
     @staticmethod
     def load(
         config: flask_githubkit.config.Config,
     ) -> githubkit.auth.OAuthTokenAuthStrategy | None:
-        payload = flask.session.get(SESSION_KEY)
+        payload = flask.session.get(TOKEN_KEY)
         if not isinstance(payload, dict):
             return None
 
@@ -60,13 +63,30 @@ class Store:
             TypeError,
             ValueError,
         ):
-            Store.clear()
+            Token.clear()
             return None
 
     @staticmethod
     def clear() -> None:
-        flask.session.pop(SESSION_KEY, None)
+        flask.session.pop(TOKEN_KEY, None)
 
     @staticmethod
-    def has_token() -> bool:
-        return SESSION_KEY in flask.session
+    def exists() -> bool:
+        return TOKEN_KEY in flask.session
+
+
+class State:
+    """Keeps the one-time OAuth ``state`` value in ``flask.session``."""
+
+    @staticmethod
+    def new() -> str:
+        state = secrets.token_urlsafe(32)
+        flask.session[STATE_KEY] = state
+        return state
+
+    @staticmethod
+    def check(received: str) -> bool:
+        expected = flask.session.pop(STATE_KEY, None)
+        return isinstance(expected, str) and hmac.compare_digest(
+            expected, received
+        )
