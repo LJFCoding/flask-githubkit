@@ -141,6 +141,21 @@ def test_client_is_cached_per_request(app, github):
         assert github.client() is github.client()
 
 
+def test_clients_are_cached_per_extension_instance(app):
+    first = flask_githubkit.GitHub()
+    second = flask_githubkit.GitHub()
+
+    with app.test_request_context():
+        flask.session["flask_githubkit.token"] = SAMPLE_TOKEN
+
+        first_client = first.client()
+        second_client = second.client()
+
+        assert first_client is not second_client
+        assert first.client() is first_client
+        assert second.client() is second_client
+
+
 def test_invalid_stored_token_is_cleared(app, github):
     with app.test_request_context():
         flask.session["flask_githubkit.token"] = {
@@ -184,6 +199,32 @@ def test_logout_removes_stored_token(app, github):
         github.logout()
 
         assert "flask_githubkit.token" not in flask.session
+
+
+def test_logout_invalidates_cached_client_in_the_same_request(app, github):
+    with app.test_request_context():
+        flask.session["flask_githubkit.token"] = SAMPLE_TOKEN
+        client = github.client()
+        assert client is not None
+
+        github.logout()
+
+        assert github.client() is None
+
+
+def test_logout_invalidates_all_cached_clients(app):
+    first = flask_githubkit.GitHub()
+    second = flask_githubkit.GitHub()
+
+    with app.test_request_context():
+        flask.session["flask_githubkit.token"] = SAMPLE_TOKEN
+        assert first.client() is not None
+        assert second.client() is not None
+
+        first.logout()
+
+        assert first.client() is None
+        assert second.client() is None
 
 
 def test_expired_refresh_token_clears_session_and_redirects_to_login(
