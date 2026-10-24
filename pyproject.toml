@@ -28,6 +28,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest"]
+lint = ["ruff", "mypy"]
 
 [project.urls]
 Homepage = "https://github.com/LJFCoding/flask-githubkit"
@@ -42,3 +43,7 @@ flask_githubkit = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.mypy]
+strict = true
+files = ["src"]
