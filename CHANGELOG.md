@@ -1,0 +1,18 @@
+# Changelog
+
+## 0.1.0
+
+First release.
+
+- `GitHub` extension with `@github.login`, `@github.callback`, `client()`
+  and `logout()`
+- OAuth `state` check on the callback
+- Expiring tokens are refreshed by GitHubKit and saved back to
+  `flask.session`
+- `scope` and `login_view` can be passed to `GitHub(...)` or set with
+  `GITHUB_SCOPE` and `GITHUB_LOGIN_VIEW`
+- A GitHub outage during the code exchange returns a 502
+- Examples for a single file, an app factory, a blueprint and API calls
+
+Not verified yet: a real GitHub exchange and refresh, Redis, and
+Flask-Session TTL behaviour.
