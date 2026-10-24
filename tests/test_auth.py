@@ -1,6 +1,15 @@
 from urllib.parse import parse_qs, urlparse
 
+import flask
+
 from flask_githubkit import auth as auth_module
+
+TOKEN = {
+    "token": "token",
+    "refresh_token": None,
+    "expire_time": None,
+    "refresh_token_expire_time": None,
+}
 
 
 def test_login_redirects_to_github_with_state_scope_and_callback(client):
@@ -104,3 +113,46 @@ def test_callback_exchanges_code_and_stores_tokens(client, monkeypatch):
         assert session["github_token"]["token"] == "access-token"
         assert session["github_token"]["refresh_token"] == "refresh-token"
         assert session.permanent
+
+
+def test_client_is_none_when_signed_out(app, github):
+    with app.test_request_context():
+        assert github.client() is None
+
+
+def test_client_is_cached_per_request(app, github):
+    with app.test_request_context():
+        flask.session["github_token"] = TOKEN
+
+        assert github.client() is github.client()
+
+
+def test_invalid_stored_token_is_cleared(app, github):
+    with app.test_request_context():
+        flask.session["github_token"] = {"token": None, "refresh_token": None}
+
+        assert github.client() is None
+        assert "github_token" not in flask.session
+
+
+def test_refreshed_token_is_written_back_to_session(app, github, client):
+    @app.route("/refresh")
+    def refresh():
+        api = github.client()
+        # Stand-in for GitHubKit refreshing the token in place during a call.
+        api.auth.token = "new-token"
+        api.auth.refresh_token = "new-refresh"
+        return flask.jsonify({})
+
+    with client.session_transaction() as session:
+        session["github_token"] = {
+            "token": "old-token",
+            "refresh_token": "old-refresh",
+            "expire_time": "2020-01-01T00:00:00+00:00",
+            "refresh_token_expire_time": "2099-01-01T00:00:00+00:00",
+        }
+
+    assert client.get("/refresh").status_code == 200
+    with client.session_transaction() as session:
+        assert session["github_token"]["token"] == "new-token"
+        assert session["github_token"]["refresh_token"] == "new-refresh"
