@@ -16,6 +16,7 @@ from .token_store import TokenStore
 
 AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
 STATE_SESSION_KEY = "github_oauth_state"
+CLIENT_G_KEY = "github_client"
 
 Result = Response | tuple[Response, int]
 
@@ -91,6 +92,35 @@ class GitHubOAuth:
             return view_function(token_auth.token, *args, **kwargs)
 
         return wrapped
+
+    def client(self) -> "GitHub[Any] | None":
+        """Return the request's GitHub client, or None if signed out.
+
+        The client is created once per request, so a token refresh happens once
+        and every caller sees the new token. GitHubKit refreshes an expired
+        access token itself; the refreshed values are saved to the session at
+        the end of the request.
+        """
+        if CLIENT_G_KEY in flask.g:
+            cached: GitHub[Any] = flask.g.github_client
+            return cached
+
+        configuration = OAuthConfiguration.from_app()
+        if configuration is None:
+            return None
+        token_auth = self.store.load(configuration)
+        if token_auth is None:
+            return None
+
+        def write_back(response: Response) -> Response:
+            if self.store.exists():
+                self.store.save(token_auth)
+            return response
+
+        flask.after_this_request(write_back)
+        github = GitHub(auth=token_auth)
+        flask.g.github_client = github
+        return github
 
     def logout(self) -> None:
         self.store.clear()
