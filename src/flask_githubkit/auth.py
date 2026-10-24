@@ -34,17 +34,12 @@ class GitHub:
     ``GITHUB_LOGIN_VIEW`` (default ``login``) when their refresh token
     has expired.
 
-    ``scope`` is the space-separated OAuth scope to request. Tokens are
-    kept by ``store.Token`` in ``flask.session``.
+    The OAuth scope to request comes from ``GITHUB_SCOPE`` (default
+    ``read:user``). Tokens are kept by ``store.Token`` in
+    ``flask.session``.
     """
 
-    def __init__(
-        self,
-        app: flask.Flask | None = None,
-        *,
-        scope: str = "read:user",
-    ) -> None:
-        self.scope = scope
+    def __init__(self, app: flask.Flask | None = None) -> None:
         if app is not None:
             self.init_app(app)
 
@@ -131,7 +126,7 @@ class GitHub:
             {
                 "client_id": config.client_id,
                 "redirect_uri": config.redirect_uri,
-                "scope": self.scope,
+                "scope": config.scope,
                 "state": flask_githubkit.store.State.new(),
             }
         )

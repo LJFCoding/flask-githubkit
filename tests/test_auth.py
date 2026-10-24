@@ -366,8 +366,13 @@ def test_login_uses_a_new_state_each_time(http_client):
     assert states[0] != states[1]
 
 
-def test_default_scope():
-    assert flask_githubkit.GitHub().scope == "read:user"
+def test_login_uses_the_default_scope(app, http_client):
+    del app.config["GITHUB_SCOPE"]
+
+    location = http_client.get("/login").headers["Location"]
+
+    query = urllib.parse.parse_qs(urllib.parse.urlparse(location).query)
+    assert query["scope"] == ["read:user"]
 
 
 def test_callback_reports_missing_configuration(app, http_client):
