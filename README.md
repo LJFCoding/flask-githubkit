@@ -6,14 +6,20 @@ refresh and stores tokens in `flask.session`.
 
 ## Installation
 
-Install the release directly from GitHub:
+Install the latest release from PyPI:
 
 ```console
+pip install flask-githubkit
+```
+
+To pin a release or install directly from GitHub:
+
+```console
+pip install "flask-githubkit==0.1.2"
 pip install "flask-githubkit @ git+https://github.com/LJFCoding/flask-githubkit.git@v0.1.2"
 ```
 
-It is not published on PyPI yet, so `pip install flask-githubkit` will not
-find it. It requires Python 3.10+ and installs Flask, GitHubKit and httpx.
+It requires Python 3.10+ and installs Flask, GitHubKit and httpx.
 
 For local development, install the test dependencies with
 `pip install -e ".[test]"`.
