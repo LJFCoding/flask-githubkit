@@ -6,7 +6,7 @@ import flask_githubkit
 
 @pytest.fixture
 def github():
-    return flask_githubkit.GitHub(scope="read:user repo", login_view="login")
+    return flask_githubkit.GitHub(scope="read:user repo")
 
 
 @pytest.fixture
