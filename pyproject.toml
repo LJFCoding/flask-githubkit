@@ -47,3 +47,12 @@ testpaths = ["tests"]
 [tool.mypy]
 strict = true
 files = ["src"]
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.lint]
+extend-select = ["E501", "TID252"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"

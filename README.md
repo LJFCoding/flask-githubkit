@@ -45,7 +45,9 @@ def login():
 @github.authorized_handler
 def callback(access_token):
     if access_token is None:
-        return flask.jsonify({"message": "GitHub authorization was denied"}), 401
+        return flask.jsonify(
+            {"message": "GitHub authorization was denied"}
+        ), 401
     return flask.jsonify({"message": "Signed in"})
 
 

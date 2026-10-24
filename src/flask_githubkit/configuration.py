@@ -1,15 +1,17 @@
-from dataclasses import dataclass
+"""OAuth App settings read from the Flask application config."""
+
+import dataclasses
 
 import flask
 
 
-@dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True)
 class OAuthConfiguration:
     """OAuth App settings read from the Flask app config.
 
     Reads ``GITHUB_CLIENT_ID``, ``GITHUB_CLIENT_SECRET`` and
-    ``GITHUB_REDIRECT_URI``. ``SECRET_KEY`` must also be set, because the OAuth
-    state and tokens are kept in ``flask.session``.
+    ``GITHUB_REDIRECT_URI``. ``SECRET_KEY`` must also be set, because
+    the OAuth state and tokens are kept in ``flask.session``.
     """
 
     client_id: str
@@ -28,4 +30,6 @@ class OAuthConfiguration:
             for value in (client_id, client_secret, redirect_uri, secret_key)
         ):
             return None
-        return OAuthConfiguration(str(client_id), str(client_secret), str(redirect_uri))
+        return OAuthConfiguration(
+            str(client_id), str(client_secret), str(redirect_uri)
+        )

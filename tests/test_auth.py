@@ -1,9 +1,9 @@
-from urllib.parse import parse_qs, urlparse
+import urllib.parse
 
 import flask
-from githubkit.exception import AuthExpiredError
-
-from flask_githubkit import auth as auth_module
+import githubkit
+import githubkit.auth
+import githubkit.exception
 
 SAMPLE_TOKEN = {
     "token": "token",
@@ -17,8 +17,8 @@ def test_login_redirects_to_github_with_state_scope_and_callback(http_client):
     response = http_client.get("/login")
 
     assert response.status_code == 302
-    redirect = urlparse(response.headers["Location"])
-    query = parse_qs(redirect.query)
+    redirect = urllib.parse.urlparse(response.headers["Location"])
+    query = urllib.parse.parse_qs(redirect.query)
     assert (redirect.scheme, redirect.netloc, redirect.path) == (
         "https",
         "github.com",
@@ -38,7 +38,9 @@ def test_login_reports_missing_configuration(app, http_client):
     response = http_client.get("/login")
 
     assert response.status_code == 500
-    assert response.get_json() == {"message": "GitHub OAuth is not configured."}
+    assert response.get_json() == {
+        "message": "GitHub OAuth is not configured."
+    }
 
 
 def test_callback_rejects_invalid_state(http_client):
@@ -101,18 +103,24 @@ def test_callback_exchanges_code_and_stores_tokens(http_client, monkeypatch):
         def __init__(self, *, auth):
             self.auth = auth
 
-    monkeypatch.setattr(auth_module, "OAuthAppAuthStrategy", FakeOAuthApp)
-    monkeypatch.setattr(auth_module, "GitHub", FakeGitHub)
+    monkeypatch.setattr(githubkit.auth, "OAuthAppAuthStrategy", FakeOAuthApp)
+    monkeypatch.setattr(githubkit, "GitHub", FakeGitHub)
 
     response = http_client.get("/callback?state=expected&code=oauth-code")
 
     assert response.get_json() == {"message": "ok", "token": "access-token"}
     assert calls["credentials"] == ("client-id", "client-secret")
-    assert calls["web_auth"] == ("oauth-code", "http://localhost:5000/callback")
+    assert calls["web_auth"] == (
+        "oauth-code",
+        "http://localhost:5000/callback",
+    )
     assert isinstance(calls["github"].auth, FakeOAuthApp)
     with http_client.session_transaction() as session:
         assert session["flask_githubkit.token"]["token"] == "access-token"
-        assert session["flask_githubkit.token"]["refresh_token"] == "refresh-token"
+        assert (
+            session["flask_githubkit.token"]["refresh_token"]
+            == "refresh-token"
+        )
         assert session.permanent
 
 
@@ -130,7 +138,10 @@ def test_client_is_cached_per_request(app, oauth):
 
 def test_invalid_stored_token_is_cleared(app, oauth):
     with app.test_request_context():
-        flask.session["flask_githubkit.token"] = {"token": None, "refresh_token": None}
+        flask.session["flask_githubkit.token"] = {
+            "token": None,
+            "refresh_token": None,
+        }
 
         assert oauth.client() is None
         assert "flask_githubkit.token" not in flask.session
@@ -156,7 +167,9 @@ def test_refreshed_token_is_written_back_to_session(app, oauth, http_client):
     assert http_client.get("/refresh").status_code == 200
     with http_client.session_transaction() as session:
         assert session["flask_githubkit.token"]["token"] == "new-token"
-        assert session["flask_githubkit.token"]["refresh_token"] == "new-refresh"
+        assert (
+            session["flask_githubkit.token"]["refresh_token"] == "new-refresh"
+        )
 
 
 def test_logout_removes_stored_token(app, oauth):
@@ -168,10 +181,12 @@ def test_logout_removes_stored_token(app, oauth):
         assert "flask_githubkit.token" not in flask.session
 
 
-def test_expired_refresh_token_clears_session_and_redirects_to_login(app, http_client):
+def test_expired_refresh_token_clears_session_and_redirects_to_login(
+    app, http_client
+):
     @app.route("/expired")
     def expired():
-        raise AuthExpiredError("Refresh token expired.")
+        raise githubkit.exception.AuthExpiredError("Refresh token expired.")
 
     with http_client.session_transaction() as session:
         session["flask_githubkit.token"] = SAMPLE_TOKEN
