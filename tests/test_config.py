@@ -19,7 +19,25 @@ def test_config_reads_the_app_settings(app):
         client_id="client-id",
         client_secret="client-secret",
         redirect_uri="http://localhost:5000/callback",
+        scope="read:user repo",
     )
+
+
+def test_config_scope_defaults_to_read_user(app):
+    del app.config["GITHUB_SCOPE"]
+
+    with app.app_context():
+        config = flask_githubkit.Config.from_current_app()
+
+    assert config.scope == "read:user"
+
+
+@pytest.mark.parametrize("scope", ["", 123, ["read:user"]])
+def test_config_is_none_when_the_scope_is_invalid(app, scope):
+    app.config["GITHUB_SCOPE"] = scope
+
+    with app.app_context():
+        assert flask_githubkit.Config.from_current_app() is None
 
 
 @pytest.mark.parametrize("key", KEYS)

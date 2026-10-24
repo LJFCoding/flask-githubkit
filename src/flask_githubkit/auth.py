@@ -9,6 +9,7 @@ import flask
 import githubkit
 import githubkit.auth
 import githubkit.exception
+import httpx
 import werkzeug.routing
 import werkzeug.wrappers
 
@@ -34,17 +35,12 @@ class GitHub:
     ``GITHUB_LOGIN_VIEW`` (default ``login``) when their refresh token
     has expired.
 
-    ``scope`` is the space-separated OAuth scope to request. Tokens are
-    kept by ``store.Token`` in ``flask.session``.
+    The OAuth scope to request comes from ``GITHUB_SCOPE`` (default
+    ``read:user``). Tokens are kept by ``store.Token`` in
+    ``flask.session``.
     """
 
-    def __init__(
-        self,
-        app: flask.Flask | None = None,
-        *,
-        scope: str = "read:user",
-    ) -> None:
-        self.scope = scope
+    def __init__(self, app: flask.Flask | None = None) -> None:
         if app is not None:
             self.init_app(app)
 
@@ -80,7 +76,10 @@ class GitHub:
             if config is None:
                 return self._error("GitHub OAuth is not configured.", 500)
 
-            strategy = self._exchange(code, config)
+            try:
+                strategy = self._exchange(code, config)
+            except (githubkit.exception.RequestError, httpx.HTTPError):
+                return self._error("Could not reach GitHub.", 502)
             flask_githubkit.store.Token.save(strategy)
             return view_func(strategy.token, *args, **kwargs)
 
@@ -131,7 +130,7 @@ class GitHub:
             {
                 "client_id": config.client_id,
                 "redirect_uri": config.redirect_uri,
-                "scope": self.scope,
+                "scope": config.scope,
                 "state": flask_githubkit.store.State.new(),
             }
         )

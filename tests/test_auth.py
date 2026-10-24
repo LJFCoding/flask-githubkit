@@ -1,10 +1,11 @@
+import json
 import urllib.parse
 
 import flask
 import githubkit
 import githubkit.auth
-import githubkit.auth.oauth
 import githubkit.exception
+import httpx
 import pytest
 
 import flask_githubkit
@@ -304,34 +305,68 @@ def test_unknown_default_login_view_is_explained():
         app.test_client().get("/expired")
 
 
-def test_callback_redirects_to_login_when_github_rejects_the_code(
-    app, http_client, monkeypatch
-):
-    class RejectingOAuthApp:
-        def __init__(self, *, client_id, client_secret):
-            pass
+TOKEN_RESPONSE = {
+    "access_token": "gho_new",
+    "refresh_token": "ghr_new",
+    "expires_in": 28800,
+    "refresh_token_expires_in": 15811200,
+    "token_type": "bearer",
+}
 
-        def as_web_user(self, code, *, redirect_uri):
-            return self
 
-        def exchange_token(self, github):
-            raise githubkit.exception.AuthExpiredError(
-                "Refresh access token error! Check your credentials.",
-                {"error": "bad_verification_code"},
-            )
-
-    class FakeGitHub:
-        def __init__(self, *, auth):
-            self.auth = auth
-
+def use_github_transport(monkeypatch, handler):
+    """Run GitHubKit's real code exchange against a mock GitHub."""
+    real_github = githubkit.GitHub
+    transport = httpx.MockTransport(handler)
     monkeypatch.setattr(
-        githubkit.auth, "OAuthAppAuthStrategy", RejectingOAuthApp
+        githubkit,
+        "GitHub",
+        lambda **kwargs: real_github(transport=transport, **kwargs),
     )
-    monkeypatch.setattr(githubkit, "GitHub", FakeGitHub)
+
+
+def start_callback(http_client, path="/callback?state=expected&code=abc"):
     with http_client.session_transaction() as session:
         session["flask_githubkit.state"] = "expected"
+    return http_client.get(path)
 
-    response = http_client.get("/callback?state=expected&code=stale")
+
+def test_real_exchange_stores_the_tokens(http_client, monkeypatch):
+    requests = []
+
+    def handler(request):
+        requests.append(json.loads(request.content))
+        return httpx.Response(200, json=TOKEN_RESPONSE)
+
+    use_github_transport(monkeypatch, handler)
+
+    response = start_callback(http_client)
+
+    assert response.get_json() == {"message": "ok", "token": "gho_new"}
+    assert requests == [
+        {
+            "client_id": "client-id",
+            "client_secret": "client-secret",
+            "code": "abc",
+            "redirect_uri": "http://localhost:5000/callback",
+        }
+    ]
+    with http_client.session_transaction() as session:
+        stored = session["flask_githubkit.token"]
+        assert stored["refresh_token"] == "ghr_new"
+        assert stored["expire_time"] is not None
+        assert stored["refresh_token_expire_time"] is not None
+
+
+def test_rejected_code_redirects_to_login(http_client, monkeypatch):
+    use_github_transport(
+        monkeypatch,
+        lambda request: httpx.Response(
+            200, json={"error": "bad_verification_code"}
+        ),
+    )
+
+    response = start_callback(http_client)
 
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/login")
@@ -339,11 +374,60 @@ def test_callback_redirects_to_login_when_github_rejects_the_code(
         assert "flask_githubkit.token" not in session
 
 
-def test_githubkit_reports_a_rejected_code_as_auth_expired():
-    parse = githubkit.auth.oauth._parse_token_exchange_response
+def raise_timeout(request):
+    raise httpx.ReadTimeout("slow", request=request)
 
-    with pytest.raises(githubkit.exception.AuthExpiredError):
-        parse({"error": "bad_verification_code"})
+
+def raise_connect_error(request):
+    raise httpx.ConnectError("refused", request=request)
+
+
+@pytest.mark.parametrize(
+    "handler",
+    [
+        lambda request: httpx.Response(500, json={"message": "boom"}),
+        lambda request: httpx.Response(503, text="unavailable"),
+        raise_timeout,
+        raise_connect_error,
+    ],
+    ids=["http-500", "http-503", "timeout", "connection-refused"],
+)
+def test_github_outage_returns_a_bad_gateway(
+    http_client, monkeypatch, handler
+):
+    use_github_transport(monkeypatch, handler)
+
+    response = start_callback(http_client)
+
+    assert response.status_code == 502
+    assert response.get_json() == {"message": "Could not reach GitHub."}
+    with http_client.session_transaction() as session:
+        assert "flask_githubkit.token" not in session
+
+
+def test_github_outage_does_not_call_the_view(app, github, monkeypatch):
+    calls = []
+
+    @app.route("/other")
+    @github.callback
+    def other(access_token):
+        calls.append(access_token)
+        return "ok"
+
+    use_github_transport(monkeypatch, raise_connect_error)
+    client = app.test_client()
+
+    start_callback(client, "/other?state=expected&code=abc")
+
+    assert calls == []
+
+
+def test_github_outage_still_consumes_the_state(http_client, monkeypatch):
+    use_github_transport(monkeypatch, raise_connect_error)
+    start_callback(http_client)
+
+    with http_client.session_transaction() as session:
+        assert "flask_githubkit.state" not in session
 
 
 def test_login_stores_the_state_it_sends(http_client):
@@ -366,8 +450,13 @@ def test_login_uses_a_new_state_each_time(http_client):
     assert states[0] != states[1]
 
 
-def test_default_scope():
-    assert flask_githubkit.GitHub().scope == "read:user"
+def test_login_uses_the_default_scope(app, http_client):
+    del app.config["GITHUB_SCOPE"]
+
+    location = http_client.get("/login").headers["Location"]
+
+    query = urllib.parse.parse_qs(urllib.parse.urlparse(location).query)
+    assert query["scope"] == ["read:user"]
 
 
 def test_callback_reports_missing_configuration(app, http_client):

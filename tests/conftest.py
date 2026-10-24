@@ -6,7 +6,7 @@ import flask_githubkit
 
 @pytest.fixture
 def github():
-    return flask_githubkit.GitHub(scope="read:user repo")
+    return flask_githubkit.GitHub()
 
 
 @pytest.fixture
@@ -18,6 +18,7 @@ def app(github):
         GITHUB_CLIENT_ID="client-id",
         GITHUB_CLIENT_SECRET="client-secret",
         GITHUB_REDIRECT_URI="http://localhost:5000/callback",
+        GITHUB_SCOPE="read:user repo",
     )
     github.init_app(app)
 
