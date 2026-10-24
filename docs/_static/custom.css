@@ -1,0 +1,7 @@
+.rst-content code.literal,
+.rst-content tt.literal,
+.rst-content .sig-name,
+.rst-content .sig-prename,
+.rst-content .sig-param {
+    color: #333333;
+}
