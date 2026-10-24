@@ -57,6 +57,7 @@ class GitHub:
             self.init_app(app)
 
     def init_app(self, app: flask.Flask) -> None:
+        """Register the ``AuthExpiredError`` handler on ``app``."""
         app.register_error_handler(
             githubkit.exception.AuthExpiredError, self._expired
         )
@@ -98,6 +99,13 @@ class GitHub:
     def callback(
         self, view_func: collections.abc.Callable[..., ViewResult]
     ) -> collections.abc.Callable[..., ViewResult]:
+        """Wrap the callback view.
+
+        The wrapper checks the OAuth ``state``, exchanges the code and
+        saves the token. It then calls the view with the access token,
+        or with ``None`` if the user denied access.
+        """
+
         @functools.wraps(view_func)
         def wrapper(*args: typing.Any, **kwargs: typing.Any) -> ViewResult:
             if not self._check_state():
@@ -164,6 +172,7 @@ class GitHub:
         return github
 
     def logout(self) -> None:
+        """Remove the stored token and any cached client."""
         flask_githubkit.store.Token.clear()
         flask.g.pop(CLIENT_ATTR, None)
 

@@ -30,7 +30,8 @@ HTTP 400 and the view is not called. If the user denies authorization,
 the view receives `None`. When the exchange succeeds, the view receives
 the access token as its first argument.
 
-Network failures while exchanging the code return HTTP 502. If the
+If GitHub redirects back without an authorization code, the extension
+returns HTTP 400. Network failures while exchanging the code return HTTP 502. If the
 GitHubKit client later raises `AuthExpiredError`, the extension clears
 the token and redirects to the configured or discovered login endpoint.
 

@@ -14,10 +14,10 @@ config. Configure the app before serving requests.
 | `GITHUB_SCOPE` | No | `read:user` | Space-separated OAuth scopes requested at login. |
 | `GITHUB_LOGIN_VIEW` | No | Decorated login view, otherwise `login` | Flask endpoint to use when a refresh token has expired. |
 
-The client ID, client secret, redirect URI and `SECRET_KEY` must be
-non-empty strings. If required configuration is missing, the login and
-callback routes return a JSON error with HTTP 500; `github.client()`
-returns `None`.
+The client ID, client secret, redirect URI, scope and `SECRET_KEY` must be
+non-empty strings. If any is missing or empty, the login route returns a
+JSON error with HTTP 500, the callback route returns the same error once its
+`state` check passes, and `github.client()` returns `None`.
 
 ## Initialize the extension
 
@@ -94,3 +94,13 @@ GitHub refresh tokens are single-use. Concurrent requests using the same
 expired token can race; this extension does not provide a distributed
 lock. A deployment that needs coordination across workers must implement
 that policy in its own storage or infrastructure.
+
+## Limitations
+
+- Only synchronous Flask applications and GitHub OAuth Apps are supported.
+  GitHub Apps and GitHub Enterprise endpoints are not configurable.
+- Real GitHub code exchange and token refresh, Redis, and Flask-Session TTL
+  behavior are not verified by the automated tests. Test them against those
+  services before relying on them in production.
+- Errors raised by your own API calls, such as network failures, are not
+  caught by the extension.
