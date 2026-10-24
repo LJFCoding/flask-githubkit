@@ -110,7 +110,10 @@ config keys above.
 The extension registers an `AuthExpiredError` handler that clears the stored
 token and redirects to `GITHUB_LOGIN_VIEW`. GitHubKit also raises
 `AuthExpiredError` when GitHub rejects the authorization code, so a stale or
-reused code sends the user back to login. If `GITHUB_LOGIN_VIEW` is not a real
+reused code sends the user back to login. If GitHub cannot be reached while
+exchanging the code (a timeout, a connection error or a 5xx response), the
+callback returns a `502` JSON error, `Could not reach GitHub.`, and does not
+call your view. If `GITHUB_LOGIN_VIEW` is not a real
 endpoint, the handler raises a `RuntimeError` that says so.
 
 `flask_githubkit.Config.from_current_app()` reads the configuration keys above.
@@ -131,7 +134,9 @@ package.
 GitHubKit refreshes expired access tokens when the client is used. The extension
 writes updated token values back to the session after the request. GitHub
 refresh tokens are single-use, so concurrent requests can race while refreshing;
-this package does not provide a distributed lock.
+this package does not provide a distributed lock. Errors raised while your own
+code uses `client()` (for example a network failure during an API call) are not
+caught by the extension.
 
 This package supports synchronous Flask apps and GitHub OAuth Apps. It does not
 support GitHub Apps or configure GitHub Enterprise endpoints. Real GitHub code
