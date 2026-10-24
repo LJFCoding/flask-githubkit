@@ -750,3 +750,82 @@ def test_decorated_login_reports_missing_configuration():
     assert response.get_json() == {
         "message": "GitHub OAuth is not configured."
     }
+
+
+def make_discovery_app(blueprint=False, **config):
+    app = flask.Flask(__name__)
+    app.config.update(TESTING=True, SECRET_KEY="test-secret", **config)
+    github = flask_githubkit.GitHub(app)
+
+    @app.route("/expired")
+    def expired():
+        raise githubkit.exception.AuthExpiredError("expired")
+
+    if blueprint:
+        auth = flask.Blueprint("auth", __name__, url_prefix="/auth")
+
+        @auth.route("/login")
+        @github.login
+        def login():
+            """Replaced by a redirect."""
+
+        app.register_blueprint(auth)
+    else:
+
+        @app.route("/sign-in")
+        @github.login
+        def signin():
+            """Replaced by a redirect."""
+
+    return app
+
+
+def test_expired_handler_finds_the_decorated_view():
+    response = make_discovery_app().test_client().get("/expired")
+
+    assert response.headers["Location"].endswith("/sign-in")
+
+
+def test_expired_handler_finds_a_decorated_blueprint_view():
+    app = make_discovery_app(blueprint=True)
+
+    response = app.test_client().get("/expired")
+
+    assert response.headers["Location"].endswith("/auth/login")
+
+
+def test_config_login_view_beats_the_decorated_view():
+    app = make_discovery_app(GITHUB_LOGIN_VIEW="other")
+
+    @app.route("/other")
+    def other():
+        return "other"
+
+    response = app.test_client().get("/expired")
+
+    assert response.headers["Location"].endswith("/other")
+
+
+def test_decorated_view_is_ignored_when_it_belongs_to_another_extension():
+    app = flask.Flask(__name__)
+    app.config.update(TESTING=True, SECRET_KEY="test-secret")
+    mine = flask_githubkit.GitHub(app)
+    other = flask_githubkit.GitHub()
+
+    @app.route("/expired")
+    def expired():
+        raise githubkit.exception.AuthExpiredError("expired")
+
+    @app.route("/theirs")
+    @other.login
+    def theirs():
+        """Replaced by a redirect."""
+
+    @app.route("/login")
+    def login():
+        return "login"
+
+    response = app.test_client().get("/expired")
+
+    assert mine is not other
+    assert response.headers["Location"].endswith("/login")
