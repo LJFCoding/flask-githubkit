@@ -35,12 +35,21 @@ class GitHub:
     ``GITHUB_LOGIN_VIEW`` (default ``login``) when their refresh token
     has expired.
 
-    The OAuth scope to request comes from ``GITHUB_SCOPE`` (default
-    ``read:user``). Tokens are kept by ``store.Token`` in
-    ``flask.session``.
+    ``scope`` and ``login_view`` may be given here. When they are not,
+    they come from ``GITHUB_SCOPE`` and ``GITHUB_LOGIN_VIEW`` in the
+    Flask config, and then from the defaults (``read:user`` and
+    ``login``). Tokens are kept by ``store.Token`` in ``flask.session``.
     """
 
-    def __init__(self, app: flask.Flask | None = None) -> None:
+    def __init__(
+        self,
+        app: flask.Flask | None = None,
+        *,
+        scope: str | None = None,
+        login_view: str | None = None,
+    ) -> None:
+        self.scope = scope
+        self.login_view = login_view
         if app is not None:
             self.init_app(app)
 
@@ -130,7 +139,7 @@ class GitHub:
             {
                 "client_id": config.client_id,
                 "redirect_uri": config.redirect_uri,
-                "scope": config.scope,
+                "scope": self.scope or config.scope,
                 "state": flask_githubkit.store.State.new(),
             }
         )
@@ -158,7 +167,9 @@ class GitHub:
         self, error: githubkit.exception.AuthExpiredError
     ) -> werkzeug.wrappers.Response:
         self.logout()
-        view = flask.current_app.config.get("GITHUB_LOGIN_VIEW", LOGIN_VIEW)
+        view = self.login_view or flask.current_app.config.get(
+            "GITHUB_LOGIN_VIEW", LOGIN_VIEW
+        )
         try:
             return flask.redirect(flask.url_for(view))
         except werkzeug.routing.BuildError as build_error:
