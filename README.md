@@ -59,8 +59,9 @@ github = flask_githubkit.GitHub(app)
 
 
 @app.route("/login")
+@github.login
 def login():
-    return github.login()
+    """Replaced by a redirect to GitHub."""
 
 
 @app.route("/callback")
@@ -132,7 +133,7 @@ Calling the API goes through GitHubKit, so see its
 | Flask-GitHub | flask-githubkit |
 | --- | --- |
 | `GitHub(app)` | `GitHub(app)` or `init_app(app)` |
-| `github.authorize()` | `github.login()` |
+| `github.authorize()` | `@github.login`, or `github.login()` in a view |
 | `@github.authorized_handler` | `@github.callback` |
 | `@github.access_token_getter` | Not needed: tokens are kept in `flask.session` |
 | `github.get("user")` | `github.client().rest.users.get_authenticated()` |
@@ -158,10 +159,15 @@ Flask config, otherwise from the default. The client ID, client secret,
 redirect URI and `SECRET_KEY` always come from the Flask config.
 
 ```python
-github = flask_githubkit.GitHub(scope="read:user repo", login_view="auth.login")
+github = flask_githubkit.GitHub(
+    scope="read:user repo", login_view="auth.login"
+)
 ```
 
-- `login()` starts the OAuth flow and redirects to GitHub.
+- `@github.login` turns a view into a redirect to GitHub that starts the
+  OAuth flow. You can also call `github.login()` inside a view and return
+  the result, which is useful if you want to run code first. The decorated
+  function's body never runs.
 - `@callback` wraps the callback view.
 - `client()` returns the request-cached GitHubKit `GitHub` client, or `None`
   when there is no valid stored token.
