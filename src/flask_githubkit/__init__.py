@@ -4,8 +4,8 @@ import flask_githubkit.auth
 import flask_githubkit.config
 import flask_githubkit.token
 
-GitHubOAuth = flask_githubkit.auth.GitHubOAuth
+GitHub = flask_githubkit.auth.GitHub
 Config = flask_githubkit.config.Config
 Store = flask_githubkit.token.Store
 
-__all__ = ["Config", "GitHubOAuth", "Store"]
+__all__ = ["Config", "GitHub", "Store"]

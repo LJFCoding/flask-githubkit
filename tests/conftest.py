@@ -5,14 +5,12 @@ import flask_githubkit
 
 
 @pytest.fixture
-def oauth():
-    return flask_githubkit.GitHubOAuth(
-        scope="read:user repo", login_endpoint="login"
-    )
+def github():
+    return flask_githubkit.GitHub(scope="read:user repo", login_view="login")
 
 
 @pytest.fixture
-def app(oauth):
+def app(github):
     app = flask.Flask(__name__)
     app.config.update(
         TESTING=True,
@@ -21,14 +19,14 @@ def app(oauth):
         GITHUB_CLIENT_SECRET="client-secret",
         GITHUB_REDIRECT_URI="http://localhost:5000/callback",
     )
-    oauth.init_app(app)
+    github.init_app(app)
 
     @app.route("/login")
     def login():
-        return oauth.authorize()
+        return github.login()
 
     @app.route("/callback")
-    @oauth.authorized_handler
+    @github.callback
     def callback(access_token):
         if access_token is None:
             return flask.jsonify({"message": "denied"}), 400

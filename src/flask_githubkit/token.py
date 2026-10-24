@@ -32,8 +32,7 @@ class Store:
             payload[key] = value.isoformat() if value else None
 
         flask.session.permanent = True
-        if flask.session.get(SESSION_KEY) != payload:
-            flask.session[SESSION_KEY] = payload
+        flask.session[SESSION_KEY] = payload
 
     @staticmethod
     def load(

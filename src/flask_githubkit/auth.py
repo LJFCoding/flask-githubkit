@@ -16,23 +16,23 @@ import werkzeug.wrappers
 import flask_githubkit.config
 import flask_githubkit.token
 
-GITHUB_AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
-STATE_SESSION_KEY = "flask_githubkit.state"
-G_CLIENT_ATTR = "github_client"
+AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
+STATE_KEY = "flask_githubkit.state"
+CLIENT_ATTR = "github_client"
 
 ViewResult = (
     werkzeug.wrappers.Response | tuple[werkzeug.wrappers.Response, int]
 )
 
 
-class GitHubOAuth:
+class GitHub:
     """GitHub OAuth web flow for Flask, backed by GitHubKit.
 
-    ``authorize`` starts the flow and ``authorized_handler`` wraps the
-    callback view, passing it the access token (or ``None`` if the user
-    denied access). ``client`` returns one GitHub client per request for
-    the signed-in user. ``init_app`` sends users to ``login_endpoint``
-    when their refresh token has expired.
+    ``login`` starts the flow and ``callback`` wraps the callback view,
+    passing it the access token (or ``None`` if the user denied
+    access). ``client`` returns one GitHub client per request for the
+    signed-in user. ``init_app`` sends users to ``login_view`` when
+    their refresh token has expired.
 
     ``scope`` is the space-separated OAuth scope to request. Tokens are
     kept by ``token.Store`` in ``flask.session``.
@@ -43,63 +43,51 @@ class GitHubOAuth:
         app: flask.Flask | None = None,
         *,
         scope: str = "read:user",
-        login_endpoint: str = "login",
+        login_view: str = "login",
     ) -> None:
         self.scope = scope
-        self.login_endpoint = login_endpoint
+        self.login_view = login_view
         self.store = flask_githubkit.token.Store()
         if app is not None:
             self.init_app(app)
 
     def init_app(self, app: flask.Flask) -> None:
         app.register_error_handler(
-            githubkit.exception.AuthExpiredError, self._handle_auth_expired
+            githubkit.exception.AuthExpiredError, self._expired
         )
 
-    def authorize(self) -> ViewResult:
+    def login(self) -> ViewResult:
         config = self._config()
         if config is None:
-            return self._json_error("GitHub OAuth is not configured.", 500)
+            return self._error("GitHub OAuth is not configured.", 500)
+        return flask.redirect(self._url(config))
 
-        state = secrets.token_urlsafe(32)
-        flask.session[STATE_SESSION_KEY] = state
-
-        query = urllib.parse.urlencode(
-            {
-                "client_id": config.client_id,
-                "redirect_uri": config.redirect_uri,
-                "scope": self.scope,
-                "state": state,
-            }
-        )
-        return flask.redirect(f"{GITHUB_AUTHORIZE_URL}?{query}")
-
-    def authorized_handler(
+    def callback(
         self, view_func: collections.abc.Callable[..., ViewResult]
     ) -> collections.abc.Callable[..., ViewResult]:
         @functools.wraps(view_func)
-        def decorated(*args: typing.Any, **kwargs: typing.Any) -> ViewResult:
-            if not self._consume_state():
-                return self._json_error("Invalid OAuth state.", 400)
+        def wrapper(*args: typing.Any, **kwargs: typing.Any) -> ViewResult:
+            if not self._check_state():
+                return self._error("Invalid OAuth state.", 400)
 
             if flask.request.args.get("error"):
                 return view_func(None, *args, **kwargs)
 
-            auth_code = flask.request.args.get("code")
-            if not auth_code:
-                return self._json_error(
+            code = flask.request.args.get("code")
+            if not code:
+                return self._error(
                     "GitHub did not return an authorization code.", 400
                 )
 
             config = self._config()
             if config is None:
-                return self._json_error("GitHub OAuth is not configured.", 500)
+                return self._error("GitHub OAuth is not configured.", 500)
 
-            strategy = self._exchange_code(auth_code, config)
+            strategy = self._exchange(code, config)
             self.store.save(strategy)
             return view_func(strategy.token, *args, **kwargs)
 
-        return decorated
+        return wrapper
 
     def client(self) -> "githubkit.GitHub[typing.Any] | None":
         """Return the request's GitHub client, or None if signed out.
@@ -110,7 +98,7 @@ class GitHubOAuth:
         are saved to the session at the end of the request.
         """
         cached: githubkit.GitHub[typing.Any] | None = getattr(
-            flask.g, G_CLIENT_ATTR, None
+            flask.g, CLIENT_ATTR, None
         )
         if cached is not None:
             return cached
@@ -122,16 +110,16 @@ class GitHubOAuth:
         if strategy is None:
             return None
 
-        def _save_refreshed_token(
+        def _save(
             response: werkzeug.wrappers.Response,
         ) -> werkzeug.wrappers.Response:
             if self.store.has_token():
                 self.store.save(strategy)
             return response
 
-        flask.after_this_request(_save_refreshed_token)
+        flask.after_this_request(_save)
         github = githubkit.GitHub(auth=strategy)
-        setattr(flask.g, G_CLIENT_ATTR, github)
+        setattr(flask.g, CLIENT_ATTR, github)
         return github
 
     def logout(self) -> None:
@@ -141,35 +129,48 @@ class GitHubOAuth:
     def _config() -> flask_githubkit.config.Config | None:
         return flask_githubkit.config.Config.from_current_app()
 
+    def _url(self, config: flask_githubkit.config.Config) -> str:
+        state = secrets.token_urlsafe(32)
+        flask.session[STATE_KEY] = state
+        query = urllib.parse.urlencode(
+            {
+                "client_id": config.client_id,
+                "redirect_uri": config.redirect_uri,
+                "scope": self.scope,
+                "state": state,
+            }
+        )
+        return f"{AUTHORIZE_URL}?{query}"
+
     @staticmethod
-    def _consume_state() -> bool:
-        expected = flask.session.pop(STATE_SESSION_KEY, None)
+    def _check_state() -> bool:
+        expected = flask.session.pop(STATE_KEY, None)
         received = flask.request.args.get("state", "")
         return isinstance(expected, str) and hmac.compare_digest(
             expected, received
         )
 
     @staticmethod
-    def _exchange_code(
-        auth_code: str,
+    def _exchange(
+        code: str,
         config: flask_githubkit.config.Config,
     ) -> githubkit.auth.OAuthTokenAuthStrategy:
-        oauth_app = githubkit.auth.OAuthAppAuthStrategy(
+        app = githubkit.auth.OAuthAppAuthStrategy(
             client_id=config.client_id,
             client_secret=config.client_secret,
         )
-        return oauth_app.as_web_user(
-            auth_code, redirect_uri=config.redirect_uri
-        ).exchange_token(githubkit.GitHub(auth=oauth_app))
+        return app.as_web_user(
+            code, redirect_uri=config.redirect_uri
+        ).exchange_token(githubkit.GitHub(auth=app))
 
-    def _handle_auth_expired(
+    def _expired(
         self, error: githubkit.exception.AuthExpiredError
     ) -> werkzeug.wrappers.Response:
         self.logout()
-        return flask.redirect(flask.url_for(self.login_endpoint))
+        return flask.redirect(flask.url_for(self.login_view))
 
     @staticmethod
-    def _json_error(
+    def _error(
         message: str, status: int
     ) -> tuple[werkzeug.wrappers.Response, int]:
         return flask.jsonify({"message": message}), status
