@@ -103,7 +103,7 @@ optional Flask app. Use `init_app(app)` to initialize it later.
 The extension registers an `AuthExpiredError` handler that clears the stored
 token and redirects to `login_endpoint`.
 
-`OAuthConfiguration.from_app()` reads the configuration keys above.
+`OAuthConfiguration.from_current_app()` reads the configuration keys above.
 `TokenStore` serializes token expiry datetimes as ISO-formatted strings in
 `flask.session`.
 
