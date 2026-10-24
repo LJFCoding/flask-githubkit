@@ -3,7 +3,9 @@ import urllib.parse
 import flask
 import githubkit
 import githubkit.auth
+import githubkit.auth.oauth
 import githubkit.exception
+import pytest
 
 import flask_githubkit
 
@@ -237,23 +239,111 @@ def test_init_app_registers_the_handler_for_each_app(github):
         assert app.test_client().get("/expired").status_code == 302
 
 
-def test_expired_handler_uses_the_custom_login_view():
-    github = flask_githubkit.GitHub(login_view="signin")
+def make_expiring_app(**config):
     app = flask.Flask(__name__)
-    app.config["SECRET_KEY"] = "test-secret"
-    github.init_app(app)
-
-    @app.route("/sign-in")
-    def signin():
-        return "sign in"
+    app.config.update(TESTING=True, SECRET_KEY="test-secret", **config)
+    flask_githubkit.GitHub(app)
 
     @app.route("/expired")
     def expired():
         raise githubkit.exception.AuthExpiredError("expired")
 
+    return app
+
+
+def test_expired_handler_uses_the_configured_login_view():
+    app = make_expiring_app(GITHUB_LOGIN_VIEW="signin")
+
+    @app.route("/sign-in")
+    def signin():
+        return "sign in"
+
     response = app.test_client().get("/expired")
 
     assert response.headers["Location"].endswith("/sign-in")
+
+
+def test_expired_handler_accepts_a_blueprint_endpoint():
+    app = make_expiring_app(GITHUB_LOGIN_VIEW="auth.login")
+    blueprint = flask.Blueprint("auth", __name__, url_prefix="/auth")
+
+    @blueprint.route("/login")
+    def login():
+        return "login"
+
+    app.register_blueprint(blueprint)
+
+    response = app.test_client().get("/expired")
+
+    assert response.headers["Location"].endswith("/auth/login")
+
+
+def test_expired_handler_defaults_to_the_login_endpoint():
+    app = make_expiring_app()
+
+    @app.route("/login")
+    def login():
+        return "login"
+
+    response = app.test_client().get("/expired")
+
+    assert response.headers["Location"].endswith("/login")
+
+
+def test_expired_handler_explains_an_unknown_login_view():
+    app = make_expiring_app(GITHUB_LOGIN_VIEW="/auth/login")
+
+    with pytest.raises(RuntimeError, match="GITHUB_LOGIN_VIEW '/auth/login'"):
+        app.test_client().get("/expired")
+
+
+def test_unknown_default_login_view_is_explained():
+    app = make_expiring_app()
+
+    with pytest.raises(RuntimeError, match="not a Flask endpoint"):
+        app.test_client().get("/expired")
+
+
+def test_callback_redirects_to_login_when_github_rejects_the_code(
+    app, http_client, monkeypatch
+):
+    class RejectingOAuthApp:
+        def __init__(self, *, client_id, client_secret):
+            pass
+
+        def as_web_user(self, code, *, redirect_uri):
+            return self
+
+        def exchange_token(self, github):
+            raise githubkit.exception.AuthExpiredError(
+                "Refresh access token error! Check your credentials.",
+                {"error": "bad_verification_code"},
+            )
+
+    class FakeGitHub:
+        def __init__(self, *, auth):
+            self.auth = auth
+
+    monkeypatch.setattr(
+        githubkit.auth, "OAuthAppAuthStrategy", RejectingOAuthApp
+    )
+    monkeypatch.setattr(githubkit, "GitHub", FakeGitHub)
+    with http_client.session_transaction() as session:
+        session["flask_githubkit.state"] = "expected"
+
+    response = http_client.get("/callback?state=expected&code=stale")
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/login")
+    with http_client.session_transaction() as session:
+        assert "flask_githubkit.token" not in session
+
+
+def test_githubkit_reports_a_rejected_code_as_auth_expired():
+    parse = githubkit.auth.oauth._parse_token_exchange_response
+
+    with pytest.raises(githubkit.exception.AuthExpiredError):
+        parse({"error": "bad_verification_code"})
 
 
 def test_login_stores_the_state_it_sends(http_client):
@@ -276,11 +366,8 @@ def test_login_uses_a_new_state_each_time(http_client):
     assert states[0] != states[1]
 
 
-def test_login_uses_the_default_scope():
-    github = flask_githubkit.GitHub()
-
-    assert github.scope == "read:user"
-    assert github.login_view == "login"
+def test_default_scope():
+    assert flask_githubkit.GitHub().scope == "read:user"
 
 
 def test_callback_reports_missing_configuration(app, http_client):

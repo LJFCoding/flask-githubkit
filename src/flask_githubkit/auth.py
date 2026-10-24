@@ -9,6 +9,7 @@ import flask
 import githubkit
 import githubkit.auth
 import githubkit.exception
+import werkzeug.routing
 import werkzeug.wrappers
 
 import flask_githubkit.config
@@ -16,6 +17,7 @@ import flask_githubkit.store
 
 AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
 CLIENT_ATTR = "flask_githubkit_client"
+LOGIN_VIEW = "login"
 
 ViewResult = (
     werkzeug.wrappers.Response | tuple[werkzeug.wrappers.Response, int]
@@ -28,8 +30,9 @@ class GitHub:
     ``login`` starts the flow and ``callback`` wraps the callback view,
     passing it the access token (or ``None`` if the user denied
     access). ``client`` returns one GitHub client per request for the
-    signed-in user. ``init_app`` sends users to ``login_view`` when
-    their refresh token has expired.
+    signed-in user. ``init_app`` sends users to the endpoint named by
+    ``GITHUB_LOGIN_VIEW`` (default ``login``) when their refresh token
+    has expired.
 
     ``scope`` is the space-separated OAuth scope to request. Tokens are
     kept by ``store.Token`` in ``flask.session``.
@@ -40,10 +43,8 @@ class GitHub:
         app: flask.Flask | None = None,
         *,
         scope: str = "read:user",
-        login_view: str = "login",
     ) -> None:
         self.scope = scope
-        self.login_view = login_view
         if app is not None:
             self.init_app(app)
 
@@ -158,7 +159,15 @@ class GitHub:
         self, error: githubkit.exception.AuthExpiredError
     ) -> werkzeug.wrappers.Response:
         self.logout()
-        return flask.redirect(flask.url_for(self.login_view))
+        view = flask.current_app.config.get("GITHUB_LOGIN_VIEW", LOGIN_VIEW)
+        try:
+            return flask.redirect(flask.url_for(view))
+        except werkzeug.routing.BuildError as build_error:
+            raise RuntimeError(
+                f"GITHUB_LOGIN_VIEW {view!r} is not a Flask endpoint. "
+                "Use the endpoint name, such as 'auth.login' for a "
+                "blueprint named 'auth'."
+            ) from build_error
 
     @staticmethod
     def _error(
