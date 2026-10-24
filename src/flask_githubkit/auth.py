@@ -131,7 +131,9 @@ class GitHubOAuth:
     def _consume_state() -> bool:
         expected = flask.session.pop(STATE_SESSION_KEY, None)
         received = flask.request.args.get("state", "")
-        return isinstance(expected, str) and hmac.compare_digest(expected, received)
+        return isinstance(expected, str) and hmac.compare_digest(
+            expected, received
+        )
 
     @staticmethod
     def _exchange_code(

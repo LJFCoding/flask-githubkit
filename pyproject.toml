@@ -47,3 +47,6 @@ testpaths = ["tests"]
 [tool.mypy]
 strict = true
 files = ["src"]
+
+[tool.ruff]
+line-length = 79

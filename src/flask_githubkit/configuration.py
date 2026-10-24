@@ -28,4 +28,6 @@ class OAuthConfiguration:
             for value in (client_id, client_secret, redirect_uri, secret_key)
         ):
             return None
-        return OAuthConfiguration(str(client_id), str(client_secret), str(redirect_uri))
+        return OAuthConfiguration(
+            str(client_id), str(client_secret), str(redirect_uri)
+        )

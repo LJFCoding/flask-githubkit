@@ -33,7 +33,9 @@ class TokenStore:
             flask.session[TOKEN_SESSION_KEY] = payload
 
     @staticmethod
-    def load(configuration: OAuthConfiguration) -> OAuthTokenAuthStrategy | None:
+    def load(
+        configuration: OAuthConfiguration,
+    ) -> OAuthTokenAuthStrategy | None:
         payload = flask.session.get(TOKEN_SESSION_KEY)
         if not isinstance(payload, dict):
             return None
