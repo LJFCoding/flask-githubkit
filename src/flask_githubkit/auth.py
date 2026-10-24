@@ -58,7 +58,34 @@ class GitHub:
             githubkit.exception.AuthExpiredError, self._expired
         )
 
-    def login(self) -> ViewResult:
+    @typing.overload
+    def login(self) -> ViewResult: ...
+
+    @typing.overload
+    def login(
+        self, view_func: collections.abc.Callable[..., typing.Any]
+    ) -> collections.abc.Callable[..., ViewResult]: ...
+
+    def login(
+        self,
+        view_func: collections.abc.Callable[..., typing.Any] | None = None,
+    ) -> ViewResult | collections.abc.Callable[..., ViewResult]:
+        """Start the OAuth flow.
+
+        Call ``login()`` inside a view, or use ``@github.login`` as a
+        decorator. The decorated function is replaced by one that
+        redirects to GitHub, and keeps its name for ``url_for``.
+        """
+        if view_func is None:
+            return self._redirect()
+
+        @functools.wraps(view_func)
+        def wrapper(*args: typing.Any, **kwargs: typing.Any) -> ViewResult:
+            return self._redirect()
+
+        return wrapper
+
+    def _redirect(self) -> ViewResult:
         config = self._config()
         if config is None:
             return self._error("GitHub OAuth is not configured.", 500)
