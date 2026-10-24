@@ -30,8 +30,9 @@ def create_app() -> flask.Flask:
     github.init_app(app)
 
     @app.route("/login")
+    @github.login
     def login():
-        return github.login()
+        """Replaced by a redirect to GitHub."""
 
     @app.route("/callback")
     @github.callback

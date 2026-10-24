@@ -47,6 +47,7 @@ def create_app() -> flask.Flask:
 
     @app.route("/login")
     def login():
+        # The call form, for when you want to run code before redirecting.
         return github.login()
 
     @app.route("/callback")

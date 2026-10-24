@@ -23,8 +23,9 @@ auth = flask.Blueprint("auth", __name__, url_prefix="/auth")
 
 
 @auth.route("/login")
+@github.login
 def login():
-    return github.login()
+    """Replaced by a redirect to GitHub."""
 
 
 @auth.route("/callback")
