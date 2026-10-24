@@ -14,7 +14,7 @@ import githubkit.exception
 import werkzeug.wrappers
 
 import flask_githubkit.config
-import flask_githubkit.token_store
+import flask_githubkit.token
 
 GITHUB_AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
 STATE_SESSION_KEY = "flask_githubkit.state"
@@ -35,7 +35,7 @@ class GitHubOAuth:
     when their refresh token has expired.
 
     ``scope`` is the space-separated OAuth scope to request. Tokens are
-    kept by ``TokenStore`` in ``flask.session``.
+    kept by ``token.Store`` in ``flask.session``.
     """
 
     def __init__(
@@ -47,7 +47,7 @@ class GitHubOAuth:
     ) -> None:
         self.scope = scope
         self.login_endpoint = login_endpoint
-        self.token_store = flask_githubkit.token_store.TokenStore()
+        self.store = flask_githubkit.token.Store()
         if app is not None:
             self.init_app(app)
 
@@ -95,9 +95,9 @@ class GitHubOAuth:
             if config is None:
                 return self._json_error("GitHub OAuth is not configured.", 500)
 
-            token_strategy = self._exchange_code(auth_code, config)
-            self.token_store.save(token_strategy)
-            return view_func(token_strategy.token, *args, **kwargs)
+            strategy = self._exchange_code(auth_code, config)
+            self.store.save(strategy)
+            return view_func(strategy.token, *args, **kwargs)
 
         return decorated
 
@@ -118,24 +118,24 @@ class GitHubOAuth:
         config = self._config()
         if config is None:
             return None
-        token_strategy = self.token_store.load(config)
-        if token_strategy is None:
+        strategy = self.store.load(config)
+        if strategy is None:
             return None
 
         def _save_refreshed_token(
             response: werkzeug.wrappers.Response,
         ) -> werkzeug.wrappers.Response:
-            if self.token_store.has_token():
-                self.token_store.save(token_strategy)
+            if self.store.has_token():
+                self.store.save(strategy)
             return response
 
         flask.after_this_request(_save_refreshed_token)
-        github = githubkit.GitHub(auth=token_strategy)
+        github = githubkit.GitHub(auth=strategy)
         setattr(flask.g, G_CLIENT_ATTR, github)
         return github
 
     def logout(self) -> None:
-        self.token_store.clear()
+        self.store.clear()
 
     @staticmethod
     def _config() -> flask_githubkit.config.Config | None:
