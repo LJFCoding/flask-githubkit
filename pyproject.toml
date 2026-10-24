@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flask-githubkit"
+version = "0.1.0"
+description = "Flask extension for GitHub OAuth login, built on GitHubKit. Handles expiring-token refresh and server-side sessions."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "LJFCoding" }]
+keywords = ["flask", "github", "githubkit", "oauth", "authentication"]
+classifiers = [
+  "Framework :: Flask",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Internet :: WWW/HTTP :: Session",
+]
+dependencies = [
+  "Flask>=3.0",
+  "githubkit>=0.16.1,<1.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[project.urls]
+Homepage = "https://github.com/LJFCoding/flask-githubkit"
+Repository = "https://github.com/LJFCoding/flask-githubkit"
+Issues = "https://github.com/LJFCoding/flask-githubkit/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
