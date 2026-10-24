@@ -12,14 +12,14 @@ python -m pip install flask-githubkit
 To pin the version used by your project:
 
 ```console
-python -m pip install "flask-githubkit==0.1.2"
+python -m pip install "flask-githubkit==0.1.3"
 ```
 
 You can also install a release directly from GitHub:
 
 ```console
 python -m pip install \
-  "flask-githubkit @ git+https://github.com/LJFCoding/flask-githubkit.git@v0.1.2"
+  "flask-githubkit @ git+https://github.com/LJFCoding/flask-githubkit.git@v0.1.3"
 ```
 
 The package installs Flask, GitHubKit and httpx as dependencies.
