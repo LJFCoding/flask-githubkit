@@ -33,7 +33,7 @@ app.config.update(
     GITHUB_REDIRECT_URI="https://example.com/callback",
 )
 
-github = flask_githubkit.GitHub(app, scope="read:user", login_view="login")
+github = flask_githubkit.GitHub(app, scope="read:user")
 
 
 @app.route("/login")
@@ -92,10 +92,10 @@ def create_app():
 | `GITHUB_CLIENT_SECRET` | Yes | GitHub OAuth App client secret |
 | `GITHUB_REDIRECT_URI` | Yes | Callback URL registered with the OAuth App |
 | `SECRET_KEY` | Yes | Flask session signing key |
+| `GITHUB_LOGIN_VIEW` | No | Endpoint name users are sent to when their refresh token has expired. Default `login`; use `auth.login` for a `login` view in a blueprint named `auth`. It is an endpoint name, not a URL. |
 
-`flask_githubkit.GitHub(app=None, *, scope="read:user",
-login_view="login")` accepts an optional Flask app. Use `init_app(app)` to
-initialize it later.
+`flask_githubkit.GitHub(app=None, *, scope="read:user")` accepts an optional
+Flask app. Use `init_app(app)` to initialize it later.
 
 - `login()` starts the OAuth flow and redirects to GitHub.
 - `@callback` wraps the callback view.
@@ -104,7 +104,10 @@ initialize it later.
 - `logout()` removes the stored GitHub token from the session.
 
 The extension registers an `AuthExpiredError` handler that clears the stored
-token and redirects to `login_view`.
+token and redirects to `GITHUB_LOGIN_VIEW`. GitHubKit also raises
+`AuthExpiredError` when GitHub rejects the authorization code, so a stale or
+reused code sends the user back to login. If `GITHUB_LOGIN_VIEW` is not a real
+endpoint, the handler raises a `RuntimeError` that says so.
 
 `flask_githubkit.Config.from_current_app()` reads the configuration keys above.
 `flask_githubkit.Token` serializes token expiry datetimes as ISO-formatted
