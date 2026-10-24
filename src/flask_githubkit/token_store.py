@@ -1,10 +1,12 @@
-from datetime import datetime
+"""Store a user's GitHub tokens in the Flask session."""
+
+import datetime
 
 import flask
-from githubkit.auth import OAuthTokenAuthStrategy
-from githubkit.exception import AuthCredentialError
+import githubkit.auth
+import githubkit.exception
 
-from .configuration import OAuthConfiguration
+import flask_githubkit.configuration
 
 TOKEN_SESSION_KEY = "flask_githubkit.token"
 DATETIME_KEYS = ("expire_time", "refresh_token_expire_time")
@@ -13,20 +15,21 @@ DATETIME_KEYS = ("expire_time", "refresh_token_expire_time")
 class TokenStore:
     """Keeps a user's GitHub tokens in ``flask.session``.
 
-    With a server-side session backend such as Redis, the browser only holds
-    the session id. Sessions are marked permanent, so
-    ``PERMANENT_SESSION_LIFETIME`` is their expiry and each save resets it.
+    With a server-side session backend such as Redis, the browser only
+    holds the session id. Sessions are marked permanent, so
+    ``PERMANENT_SESSION_LIFETIME`` is their expiry and each save resets
+    it.
     """
 
     @staticmethod
-    def save(token_auth: OAuthTokenAuthStrategy) -> None:
+    def save(token_strategy: githubkit.auth.OAuthTokenAuthStrategy) -> None:
         payload: dict[str, str | None] = {
-            "token": token_auth.token,
-            "refresh_token": token_auth.refresh_token,
+            "token": token_strategy.token,
+            "refresh_token": token_strategy.refresh_token,
         }
-        for field in DATETIME_KEYS:
-            value = getattr(token_auth, field)
-            payload[field] = value.isoformat() if value else None
+        for key in DATETIME_KEYS:
+            value = getattr(token_strategy, key)
+            payload[key] = value.isoformat() if value else None
 
         flask.session.permanent = True
         if flask.session.get(TOKEN_SESSION_KEY) != payload:
@@ -34,26 +37,30 @@ class TokenStore:
 
     @staticmethod
     def load(
-        configuration: OAuthConfiguration,
-    ) -> OAuthTokenAuthStrategy | None:
+        oauth_config: flask_githubkit.configuration.OAuthConfiguration,
+    ) -> githubkit.auth.OAuthTokenAuthStrategy | None:
         payload = flask.session.get(TOKEN_SESSION_KEY)
         if not isinstance(payload, dict):
             return None
 
         try:
-            return OAuthTokenAuthStrategy(
-                client_id=configuration.client_id,
-                client_secret=configuration.client_secret,
+            return githubkit.auth.OAuthTokenAuthStrategy(
+                client_id=oauth_config.client_id,
+                client_secret=oauth_config.client_secret,
                 token=payload.get("token"),
                 refresh_token=payload.get("refresh_token"),
                 **{
-                    field: datetime.fromisoformat(payload[field])
-                    if payload.get(field)
+                    key: datetime.datetime.fromisoformat(payload[key])
+                    if payload.get(key)
                     else None
-                    for field in DATETIME_KEYS
+                    for key in DATETIME_KEYS
                 },
             )
-        except (AuthCredentialError, TypeError, ValueError):
+        except (
+            githubkit.exception.AuthCredentialError,
+            TypeError,
+            ValueError,
+        ):
             TokenStore.clear()
             return None
 
