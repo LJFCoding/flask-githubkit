@@ -1,6 +1,8 @@
 """Everything flask_githubkit keeps in the Flask session."""
 
 import datetime
+import hmac
+import secrets
 
 import flask
 import githubkit.auth
@@ -9,6 +11,7 @@ import githubkit.exception
 import flask_githubkit.config
 
 TOKEN_KEY = "flask_githubkit.token"
+STATE_KEY = "flask_githubkit.state"
 DATETIME_KEYS = ("expire_time", "refresh_token_expire_time")
 
 
@@ -70,3 +73,20 @@ class Token:
     @staticmethod
     def exists() -> bool:
         return TOKEN_KEY in flask.session
+
+
+class State:
+    """Keeps the one-time OAuth ``state`` value in ``flask.session``."""
+
+    @staticmethod
+    def new() -> str:
+        state = secrets.token_urlsafe(32)
+        flask.session[STATE_KEY] = state
+        return state
+
+    @staticmethod
+    def check(received: str) -> bool:
+        expected = flask.session.pop(STATE_KEY, None)
+        return isinstance(expected, str) and hmac.compare_digest(
+            expected, received
+        )

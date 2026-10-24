@@ -2,8 +2,6 @@
 
 import collections.abc
 import functools
-import hmac
-import secrets
 import typing
 import urllib.parse
 
@@ -17,7 +15,6 @@ import flask_githubkit.config
 import flask_githubkit.store
 
 AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
-STATE_KEY = "flask_githubkit.state"
 CLIENT_ATTR = "github_client"
 
 ViewResult = (
@@ -129,25 +126,20 @@ class GitHub:
         return flask_githubkit.config.Config.from_current_app()
 
     def _url(self, config: flask_githubkit.config.Config) -> str:
-        state = secrets.token_urlsafe(32)
-        flask.session[STATE_KEY] = state
         query = urllib.parse.urlencode(
             {
                 "client_id": config.client_id,
                 "redirect_uri": config.redirect_uri,
                 "scope": self.scope,
-                "state": state,
+                "state": flask_githubkit.store.State.new(),
             }
         )
         return f"{AUTHORIZE_URL}?{query}"
 
     @staticmethod
     def _check_state() -> bool:
-        expected = flask.session.pop(STATE_KEY, None)
         received = flask.request.args.get("state", "")
-        return isinstance(expected, str) and hmac.compare_digest(
-            expected, received
-        )
+        return flask_githubkit.store.State.check(received)
 
     @staticmethod
     def _exchange(
