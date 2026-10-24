@@ -12,8 +12,29 @@ Install the release directly from GitHub:
 pip install "flask-githubkit @ git+https://github.com/LJFCoding/flask-githubkit.git@v0.1.0"
 ```
 
+It is not published on PyPI yet, so `pip install flask-githubkit` will not
+find it. It requires Python 3.10+ and installs Flask, GitHubKit and httpx.
+
 For local development, install the test dependencies with
 `pip install -e ".[test]"`.
+
+## How it works
+
+1. `github.login()` redirects the user to GitHub with a random `state` value
+   that is kept in `flask.session`.
+2. GitHub redirects back to your callback URL with a `code` and the `state`.
+3. `@github.callback` checks the `state` (blocking login CSRF), exchanges the
+   `code` for tokens through GitHubKit, saves them in `flask.session`, and
+   calls your view with the access token.
+4. In any later request, `github.client()` returns a GitHubKit client for that
+   user. GitHubKit refreshes an expired access token itself, and the new
+   token values are saved back to the session when the request finishes.
+
+The names follow [Flask-GitHub](https://github.com/cenkalti/github-flask), but
+the API is smaller and the HTTP calls are made by
+[GitHubKit](https://github.com/yanyongyu/githubkit), so you get its typed
+`rest` methods instead of raw `get`/`post` helpers. Only synchronous Flask
+apps are supported.
 
 ## Quick start
 
@@ -86,6 +107,37 @@ def create_app():
     return app
 ```
 
+## Examples
+
+Each file in [examples/](examples) is a complete app. They are checked by the
+test suite, which confirms the login route redirects to GitHub.
+
+| File | Shows |
+| --- | --- |
+| [single_file.py](examples/single_file.py) | A module-level app with `GitHub(app)` |
+| [factory.py](examples/factory.py) | An app factory with `init_app` and the optional config keys |
+| [blueprint.py](examples/blueprint.py) | Login routes in a blueprint, with `login_view="auth.login"` |
+| [routes.py](examples/routes.py) | A `login_required` decorator and a route that calls the GitHub API |
+
+Set `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` and `SECRET_KEY` in your
+environment, then run one with, for example,
+`flask --app examples/single_file run`.
+
+Calling the API goes through GitHubKit, so see its
+[documentation](https://yanyongyu.github.io/githubkit/) for everything
+`client().rest` offers.
+
+## Coming from Flask-GitHub
+
+| Flask-GitHub | flask-githubkit |
+| --- | --- |
+| `GitHub(app)` | `GitHub(app)` or `init_app(app)` |
+| `github.authorize()` | `github.login()` |
+| `@github.authorized_handler` | `@github.callback` |
+| `@github.access_token_getter` | Not needed: tokens are kept in `flask.session` |
+| `github.get("user")` | `github.client().rest.users.get_authenticated()` |
+| `authorize(scope=..., redirect_uri=...)` | Not supported: use `scope=` in `GitHub(...)` or `GITHUB_SCOPE`, and `GITHUB_REDIRECT_URI` |
+
 ## Configuration and API
 
 | Flask config key | Required | Purpose |
@@ -97,9 +149,17 @@ def create_app():
 | `GITHUB_SCOPE` | No | Space-separated OAuth scopes to request. Default `read:user`. |
 | `GITHUB_LOGIN_VIEW` | No | Endpoint name users are sent to when their refresh token has expired. Default `login`; use `auth.login` for a `login` view in a blueprint named `auth`. It is an endpoint name, not a URL. |
 
-`flask_githubkit.GitHub(app=None)` accepts an optional Flask app. Use
-`init_app(app)` to initialize it later. All settings come from the Flask
-config keys above.
+`flask_githubkit.GitHub(app=None, *, scope=None, login_view=None)` accepts an
+optional Flask app. Use `init_app(app)` to initialize it later.
+
+`scope` and `login_view` are optional. Each one is taken from the constructor
+if you pass it, otherwise from `GITHUB_SCOPE` or `GITHUB_LOGIN_VIEW` in the
+Flask config, otherwise from the default. The client ID, client secret,
+redirect URI and `SECRET_KEY` always come from the Flask config.
+
+```python
+github = flask_githubkit.GitHub(scope="read:user repo", login_view="auth.login")
+```
 
 - `login()` starts the OAuth flow and redirects to GitHub.
 - `@callback` wraps the callback view.
