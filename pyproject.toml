@@ -28,7 +28,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest"]
+test = ["pytest", "coverage"]
 lint = ["ruff", "mypy"]
 
 [project.urls]
@@ -44,6 +44,14 @@ flask_githubkit = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["flask_githubkit"]
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
 
 [tool.mypy]
 strict = true

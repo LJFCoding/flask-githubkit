@@ -150,3 +150,10 @@ automated tests in this repository.
 pip install -e ".[test]"
 pytest
 ```
+
+CI also requires 100% line and branch coverage:
+
+```console
+coverage run -m pytest
+coverage report
+```
