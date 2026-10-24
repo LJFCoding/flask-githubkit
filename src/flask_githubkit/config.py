@@ -6,7 +6,7 @@ import flask
 
 
 @dataclasses.dataclass(frozen=True)
-class OAuthConfiguration:
+class Config:
     """OAuth App settings read from the Flask app config.
 
     Reads ``GITHUB_CLIENT_ID``, ``GITHUB_CLIENT_SECRET`` and
@@ -19,7 +19,7 @@ class OAuthConfiguration:
     redirect_uri: str
 
     @staticmethod
-    def from_current_app() -> "OAuthConfiguration | None":
+    def from_current_app() -> "Config | None":
         app_config = flask.current_app.config
         client_id = app_config.get("GITHUB_CLIENT_ID")
         client_secret = app_config.get("GITHUB_CLIENT_SECRET")
@@ -30,6 +30,4 @@ class OAuthConfiguration:
             for value in (client_id, client_secret, redirect_uri, secret_key)
         ):
             return None
-        return OAuthConfiguration(
-            str(client_id), str(client_secret), str(redirect_uri)
-        )
+        return Config(str(client_id), str(client_secret), str(redirect_uri))

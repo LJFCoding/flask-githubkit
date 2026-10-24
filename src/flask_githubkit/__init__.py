@@ -1,11 +1,11 @@
 """Flask extension for GitHub OAuth login, built on GitHubKit."""
 
 import flask_githubkit.auth
-import flask_githubkit.configuration
+import flask_githubkit.config
 import flask_githubkit.token_store
 
 GitHubOAuth = flask_githubkit.auth.GitHubOAuth
-OAuthConfiguration = flask_githubkit.configuration.OAuthConfiguration
+Config = flask_githubkit.config.Config
 TokenStore = flask_githubkit.token_store.TokenStore
 
-__all__ = ["GitHubOAuth", "OAuthConfiguration", "TokenStore"]
+__all__ = ["Config", "GitHubOAuth", "TokenStore"]

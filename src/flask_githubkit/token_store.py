@@ -6,7 +6,7 @@ import flask
 import githubkit.auth
 import githubkit.exception
 
-import flask_githubkit.configuration
+import flask_githubkit.config
 
 TOKEN_SESSION_KEY = "flask_githubkit.token"
 DATETIME_KEYS = ("expire_time", "refresh_token_expire_time")
@@ -37,7 +37,7 @@ class TokenStore:
 
     @staticmethod
     def load(
-        oauth_config: flask_githubkit.configuration.OAuthConfiguration,
+        config: flask_githubkit.config.Config,
     ) -> githubkit.auth.OAuthTokenAuthStrategy | None:
         payload = flask.session.get(TOKEN_SESSION_KEY)
         if not isinstance(payload, dict):
@@ -45,8 +45,8 @@ class TokenStore:
 
         try:
             return githubkit.auth.OAuthTokenAuthStrategy(
-                client_id=oauth_config.client_id,
-                client_secret=oauth_config.client_secret,
+                client_id=config.client_id,
+                client_secret=config.client_secret,
                 token=payload.get("token"),
                 refresh_token=payload.get("refresh_token"),
                 **{

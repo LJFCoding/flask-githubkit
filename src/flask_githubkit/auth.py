@@ -13,7 +13,7 @@ import githubkit.auth
 import githubkit.exception
 import werkzeug.wrappers
 
-import flask_githubkit.configuration
+import flask_githubkit.config
 import flask_githubkit.token_store
 
 GITHUB_AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
@@ -57,8 +57,8 @@ class GitHubOAuth:
         )
 
     def authorize(self) -> ViewResult:
-        oauth_config = self._load_oauth_config()
-        if oauth_config is None:
+        config = self._config()
+        if config is None:
             return self._json_error("GitHub OAuth is not configured.", 500)
 
         state = secrets.token_urlsafe(32)
@@ -66,8 +66,8 @@ class GitHubOAuth:
 
         query = urllib.parse.urlencode(
             {
-                "client_id": oauth_config.client_id,
-                "redirect_uri": oauth_config.redirect_uri,
+                "client_id": config.client_id,
+                "redirect_uri": config.redirect_uri,
                 "scope": self.scope,
                 "state": state,
             }
@@ -91,11 +91,11 @@ class GitHubOAuth:
                     "GitHub did not return an authorization code.", 400
                 )
 
-            oauth_config = self._load_oauth_config()
-            if oauth_config is None:
+            config = self._config()
+            if config is None:
                 return self._json_error("GitHub OAuth is not configured.", 500)
 
-            token_strategy = self._exchange_code(auth_code, oauth_config)
+            token_strategy = self._exchange_code(auth_code, config)
             self.token_store.save(token_strategy)
             return view_func(token_strategy.token, *args, **kwargs)
 
@@ -115,10 +115,10 @@ class GitHubOAuth:
         if cached is not None:
             return cached
 
-        oauth_config = self._load_oauth_config()
-        if oauth_config is None:
+        config = self._config()
+        if config is None:
             return None
-        token_strategy = self.token_store.load(oauth_config)
+        token_strategy = self.token_store.load(config)
         if token_strategy is None:
             return None
 
@@ -138,11 +138,8 @@ class GitHubOAuth:
         self.token_store.clear()
 
     @staticmethod
-    def _load_oauth_config() -> (
-        flask_githubkit.configuration.OAuthConfiguration | None
-    ):
-        configuration = flask_githubkit.configuration.OAuthConfiguration
-        return configuration.from_current_app()
+    def _config() -> flask_githubkit.config.Config | None:
+        return flask_githubkit.config.Config.from_current_app()
 
     @staticmethod
     def _consume_state() -> bool:
@@ -155,14 +152,14 @@ class GitHubOAuth:
     @staticmethod
     def _exchange_code(
         auth_code: str,
-        oauth_config: flask_githubkit.configuration.OAuthConfiguration,
+        config: flask_githubkit.config.Config,
     ) -> githubkit.auth.OAuthTokenAuthStrategy:
         oauth_app = githubkit.auth.OAuthAppAuthStrategy(
-            client_id=oauth_config.client_id,
-            client_secret=oauth_config.client_secret,
+            client_id=config.client_id,
+            client_secret=config.client_secret,
         )
         return oauth_app.as_web_user(
-            auth_code, redirect_uri=oauth_config.redirect_uri
+            auth_code, redirect_uri=config.redirect_uri
         ).exchange_token(githubkit.GitHub(auth=oauth_app))
 
     def _handle_auth_expired(
