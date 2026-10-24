@@ -9,7 +9,7 @@ refresh and stores tokens in `flask.session`.
 Install the release directly from GitHub:
 
 ```console
-pip install "flask-githubkit @ git+https://github.com/LJFCoding/flask-githubkit.git@v0.1.0"
+pip install "flask-githubkit @ git+https://github.com/LJFCoding/flask-githubkit.git@v0.1.1"
 ```
 
 It is not published on PyPI yet, so `pip install flask-githubkit` will not
@@ -117,7 +117,7 @@ test suite, which confirms the login route redirects to GitHub.
 | --- | --- |
 | [single_file.py](examples/single_file.py) | A module-level app with `GitHub(app)` |
 | [factory.py](examples/factory.py) | An app factory with `init_app` and the optional config keys |
-| [blueprint.py](examples/blueprint.py) | Login routes in a blueprint, with `login_view="auth.login"` |
+| [blueprint.py](examples/blueprint.py) | Login routes in a blueprint; the `auth.login` endpoint is found from `@github.login` |
 | [routes.py](examples/routes.py) | A `login_required` decorator and a route that calls the GitHub API |
 
 Set `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` and `SECRET_KEY` in your
@@ -148,15 +148,18 @@ Calling the API goes through GitHubKit, so see its
 | `GITHUB_REDIRECT_URI` | Yes | Callback URL registered with the OAuth App |
 | `SECRET_KEY` | Yes | Flask session signing key |
 | `GITHUB_SCOPE` | No | Space-separated OAuth scopes to request. Default `read:user`. |
-| `GITHUB_LOGIN_VIEW` | No | Endpoint name users are sent to when their refresh token has expired. Default `login`; use `auth.login` for a `login` view in a blueprint named `auth`. It is an endpoint name, not a URL. |
+| `GITHUB_LOGIN_VIEW` | No | Endpoint name users are sent to when their refresh token has expired. Usually not needed: see below. It is an endpoint name such as `auth.login`, not a URL. |
 
 `flask_githubkit.GitHub(app=None, *, scope=None, login_view=None)` accepts an
 optional Flask app. Use `init_app(app)` to initialize it later.
 
 `scope` and `login_view` are optional. Each one is taken from the constructor
 if you pass it, otherwise from `GITHUB_SCOPE` or `GITHUB_LOGIN_VIEW` in the
-Flask config, otherwise from the default. The client ID, client secret,
-redirect URI and `SECRET_KEY` always come from the Flask config.
+Flask config. If neither is set, the scope is `read:user`. The login view is
+the view you decorated with `@github.login`, with its blueprint prefix
+(`auth.login`), or an endpoint named `login` if there is no decorated view.
+The client ID, client secret, redirect URI and `SECRET_KEY` always come from
+the Flask config.
 
 ```python
 github = flask_githubkit.GitHub(
@@ -174,12 +177,12 @@ github = flask_githubkit.GitHub(
 - `logout()` removes the stored GitHub token from the session.
 
 The extension registers an `AuthExpiredError` handler that clears the stored
-token and redirects to `GITHUB_LOGIN_VIEW`. GitHubKit also raises
+token and redirects to the login view. GitHubKit also raises
 `AuthExpiredError` when GitHub rejects the authorization code, so a stale or
 reused code sends the user back to login. If GitHub cannot be reached while
 exchanging the code (a timeout, a connection error or a 5xx response), the
 callback returns a `502` JSON error, `Could not reach GitHub.`, and does not
-call your view. If `GITHUB_LOGIN_VIEW` is not a real
+call your view. If the login view is not a real
 endpoint, the handler raises a `RuntimeError` that says so.
 
 `flask_githubkit.Config.from_current_app()` reads the configuration keys above.

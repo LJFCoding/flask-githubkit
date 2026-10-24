@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.1
+
+- `@github.login` marks the view it decorates, and an expired refresh
+  token redirects there. A blueprint view needs no `login_view` setting.
+- The login view is chosen from the `login_view` argument, then
+  `GITHUB_LOGIN_VIEW`, then the decorated view, then `login`.
+
 ## 0.1.0
 
 First release.
