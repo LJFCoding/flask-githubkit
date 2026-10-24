@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.3
+
+- Add a Sphinx documentation site with installation, quick start,
+  configuration, examples and API reference pages.
+- Configure Read the Docs to build the documentation from the repository.
+- Add the documentation URL to package metadata.
+
 ## 0.1.2
 
 - Clear the request-cached GitHubKit client on logout, so logging out

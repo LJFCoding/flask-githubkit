@@ -4,6 +4,8 @@ A Flask extension for GitHub OAuth login, built on
 [GitHubKit](https://github.com/yanyongyu/githubkit). It handles expiring-token
 refresh and stores tokens in `flask.session`.
 
+Documentation: [flask-githubkit.readthedocs.io](https://flask-githubkit.readthedocs.io/en/latest/)
+
 ## Installation
 
 Install the latest release from PyPI:
@@ -15,8 +17,8 @@ pip install flask-githubkit
 To pin a release or install directly from GitHub:
 
 ```console
-pip install "flask-githubkit==0.1.2"
-pip install "flask-githubkit @ git+https://github.com/LJFCoding/flask-githubkit.git@v0.1.2"
+pip install "flask-githubkit==0.1.3"
+pip install "flask-githubkit @ git+https://github.com/LJFCoding/flask-githubkit.git@v0.1.3"
 ```
 
 It requires Python 3.10+ and installs Flask, GitHubKit and httpx.
@@ -116,15 +118,15 @@ def create_app():
 
 ## Examples
 
-Each file in [examples/](examples) is a complete app. They are checked by the
+Each file in [examples/](https://github.com/LJFCoding/flask-githubkit/tree/main/examples) is a complete app. They are checked by the
 test suite, which confirms the login route redirects to GitHub.
 
 | File | Shows |
 | --- | --- |
-| [single_file.py](examples/single_file.py) | A module-level app with `GitHub(app)` |
-| [factory.py](examples/factory.py) | An app factory with `init_app` and the optional config keys |
-| [blueprint.py](examples/blueprint.py) | Login routes in a blueprint; the `auth.login` endpoint is found from `@github.login` |
-| [routes.py](examples/routes.py) | A `login_required` decorator and a route that calls the GitHub API |
+| [single_file.py](https://github.com/LJFCoding/flask-githubkit/blob/main/examples/single_file.py) | A module-level app with `GitHub(app)` |
+| [factory.py](https://github.com/LJFCoding/flask-githubkit/blob/main/examples/factory.py) | An app factory with `init_app` and the optional config keys |
+| [blueprint.py](https://github.com/LJFCoding/flask-githubkit/blob/main/examples/blueprint.py) | Login routes in a blueprint; the `auth.login` endpoint is found from `@github.login` |
+| [routes.py](https://github.com/LJFCoding/flask-githubkit/blob/main/examples/routes.py) | A `login_required` decorator and a route that calls the GitHub API |
 
 Set `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` and `SECRET_KEY` in your
 environment, then run one with, for example,
@@ -177,7 +179,7 @@ github = flask_githubkit.GitHub(
   OAuth flow. You can also call `github.login()` inside a view and return
   the result, which is useful if you want to run code first. The decorated
   function's body never runs.
-- `@callback` wraps the callback view.
+- `@github.callback` wraps the callback view.
 - `client()` returns the request-cached GitHubKit `GitHub` client, or `None`
   when there is no valid stored token.
 - `logout()` removes the stored GitHub token from the session.
