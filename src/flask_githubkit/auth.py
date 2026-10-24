@@ -14,11 +14,11 @@ from werkzeug.wrappers import Response
 from .configuration import OAuthConfiguration
 from .token_store import TokenStore
 
-AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
-STATE_SESSION_KEY = "github_oauth_state"
-CLIENT_G_KEY = "github_client"
+GITHUB_AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
+STATE_SESSION_KEY = "flask_githubkit.state"
+G_CLIENT_ATTR = "github_client"
 
-Result = Response | tuple[Response, int]
+ViewResult = Response | tuple[Response, int]
 
 
 class GitHubOAuth:
@@ -50,7 +50,7 @@ class GitHubOAuth:
     def init_app(self, app: flask.Flask) -> None:
         app.register_error_handler(AuthExpiredError, self._handle_expired)
 
-    def authorize(self) -> Result:
+    def authorize(self) -> ViewResult:
         configuration = OAuthConfiguration.from_current_app()
         if configuration is None:
             return self._error("GitHub OAuth is not configured.", 500)
@@ -66,13 +66,13 @@ class GitHubOAuth:
                 "state": state,
             }
         )
-        return flask.redirect(f"{AUTHORIZE_URL}?{query}")
+        return flask.redirect(f"{GITHUB_AUTHORIZE_URL}?{query}")
 
     def authorized_handler(
-        self, view_function: Callable[..., Result]
-    ) -> Callable[..., Result]:
+        self, view_function: Callable[..., ViewResult]
+    ) -> Callable[..., ViewResult]:
         @wraps(view_function)
-        def wrapped(*args: Any, **kwargs: Any) -> Result:
+        def wrapped(*args: Any, **kwargs: Any) -> ViewResult:
             if not self._valid_state():
                 return self._error("Invalid OAuth state.", 400)
 
@@ -101,8 +101,8 @@ class GitHubOAuth:
         access token itself; the refreshed values are saved to the session at
         the end of the request.
         """
-        if CLIENT_G_KEY in flask.g:
-            cached: GitHub[Any] = flask.g.github_client
+        cached: GitHub[Any] | None = getattr(flask.g, G_CLIENT_ATTR, None)
+        if cached is not None:
             return cached
 
         configuration = OAuthConfiguration.from_current_app()
@@ -119,7 +119,7 @@ class GitHubOAuth:
 
         flask.after_this_request(write_back)
         github = GitHub(auth=token_auth)
-        flask.g.github_client = github
+        setattr(flask.g, G_CLIENT_ATTR, github)
         return github
 
     def logout(self) -> None:

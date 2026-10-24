@@ -29,7 +29,7 @@ def test_login_redirects_to_github_with_state_scope_and_callback(client):
     assert query["scope"] == ["read:user repo"]
     assert len(query["state"][0]) >= 32
     with client.session_transaction() as session:
-        assert session["github_oauth_state"] == query["state"][0]
+        assert session["flask_githubkit.state"] == query["state"][0]
 
 
 def test_login_reports_missing_configuration(app, client):
@@ -50,7 +50,7 @@ def test_callback_rejects_invalid_state(client):
 
 def test_callback_passes_none_when_access_is_denied(client):
     with client.session_transaction() as session:
-        session["github_oauth_state"] = "expected"
+        session["flask_githubkit.state"] = "expected"
 
     response = client.get("/callback?state=expected&error=access_denied")
 
@@ -60,7 +60,7 @@ def test_callback_passes_none_when_access_is_denied(client):
 
 def test_callback_requires_a_code(client):
     with client.session_transaction() as session:
-        session["github_oauth_state"] = "expected"
+        session["flask_githubkit.state"] = "expected"
 
     response = client.get("/callback?state=expected")
 
@@ -72,7 +72,7 @@ def test_callback_requires_a_code(client):
 
 def test_callback_exchanges_code_and_stores_tokens(client, monkeypatch):
     with client.session_transaction() as session:
-        session["github_oauth_state"] = "expected"
+        session["flask_githubkit.state"] = "expected"
     calls = {}
 
     class FakeWebAuth:
