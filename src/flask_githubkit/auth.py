@@ -15,7 +15,7 @@ import flask_githubkit.config
 import flask_githubkit.store
 
 AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
-CLIENT_ATTR = "github_client"
+CLIENT_ATTR = "flask_githubkit_client"
 
 ViewResult = (
     werkzeug.wrappers.Response | tuple[werkzeug.wrappers.Response, int]
