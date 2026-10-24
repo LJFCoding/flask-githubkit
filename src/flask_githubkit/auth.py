@@ -113,7 +113,7 @@ class GitHubOAuth:
             return None
 
         def write_back(response: Response) -> Response:
-            if self.store.exists():
+            if self.store.has_token():
                 self.store.save(token_auth)
             return response
 
