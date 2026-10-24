@@ -240,10 +240,10 @@ def test_init_app_registers_the_handler_for_each_app(github):
         assert app.test_client().get("/expired").status_code == 302
 
 
-def make_expiring_app(**config):
+def make_expiring_app(options=None, **config):
     app = flask.Flask(__name__)
     app.config.update(TESTING=True, SECRET_KEY="test-secret", **config)
-    flask_githubkit.GitHub(app)
+    flask_githubkit.GitHub(app, **(options or {}))
 
     @app.route("/expired")
     def expired():
@@ -616,3 +616,82 @@ def test_logout_keeps_other_session_data(app, github):
         github.logout()
 
         assert flask.session["mine"] == "kept"
+
+
+def scope_of(client):
+    location = client.get("/login").headers["Location"]
+    query = urllib.parse.parse_qs(urllib.parse.urlparse(location).query)
+    return query["scope"]
+
+
+def make_login_app(app_config=None, **options):
+    app = flask.Flask(__name__)
+    app.config.update(
+        TESTING=True,
+        SECRET_KEY="test-secret",
+        GITHUB_CLIENT_ID="client-id",
+        GITHUB_CLIENT_SECRET="client-secret",
+        GITHUB_REDIRECT_URI="http://localhost:5000/callback",
+        **(app_config or {}),
+    )
+    github = flask_githubkit.GitHub(app, **options)
+    app.add_url_rule("/login", "login", github.login)
+    return app
+
+
+def test_constructor_scope_overrides_the_config():
+    app = make_login_app({"GITHUB_SCOPE": "read:user"}, scope="repo")
+
+    assert scope_of(app.test_client()) == ["repo"]
+
+
+def test_scope_comes_from_the_config_without_a_constructor_value():
+    app = make_login_app({"GITHUB_SCOPE": "repo gist"})
+
+    assert scope_of(app.test_client()) == ["repo gist"]
+
+
+def test_scope_defaults_when_neither_is_given():
+    app = make_login_app()
+
+    assert scope_of(app.test_client()) == ["read:user"]
+
+
+def test_scope_can_be_set_after_init_app_is_called_later():
+    app = flask.Flask(__name__)
+    app.config.update(
+        SECRET_KEY="test-secret",
+        GITHUB_CLIENT_ID="client-id",
+        GITHUB_CLIENT_SECRET="client-secret",
+        GITHUB_REDIRECT_URI="http://localhost:5000/callback",
+    )
+    github = flask_githubkit.GitHub(scope="gist")
+    github.init_app(app)
+    app.add_url_rule("/login", "login", github.login)
+
+    assert scope_of(app.test_client()) == ["gist"]
+
+
+def test_constructor_login_view_overrides_the_config():
+    app = make_expiring_app(
+        {"login_view": "signin"}, GITHUB_LOGIN_VIEW="other"
+    )
+
+    @app.route("/sign-in")
+    def signin():
+        return "sign in"
+
+    response = app.test_client().get("/expired")
+
+    assert response.headers["Location"].endswith("/sign-in")
+
+
+def test_constructor_login_view_accepts_a_blueprint_endpoint():
+    app = make_expiring_app({"login_view": "auth.login"})
+    blueprint = flask.Blueprint("auth", __name__, url_prefix="/auth")
+    blueprint.add_url_rule("/login", "login", lambda: "login")
+    app.register_blueprint(blueprint)
+
+    response = app.test_client().get("/expired")
+
+    assert response.headers["Location"].endswith("/auth/login")
