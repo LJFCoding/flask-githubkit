@@ -1,7 +1,13 @@
+import hmac
 import secrets
+from collections.abc import Callable
+from functools import wraps
+from typing import Any
 from urllib.parse import urlencode
 
 import flask
+from githubkit import GitHub
+from githubkit.auth import OAuthAppAuthStrategy, OAuthTokenAuthStrategy
 from githubkit.exception import AuthExpiredError
 from werkzeug.wrappers import Response
 
@@ -61,8 +67,51 @@ class GitHubOAuth:
         )
         return flask.redirect(f"{AUTHORIZE_URL}?{query}")
 
+    def authorized_handler(
+        self, view_function: Callable[..., Result]
+    ) -> Callable[..., Result]:
+        @wraps(view_function)
+        def wrapped(*args: Any, **kwargs: Any) -> Result:
+            if not self._valid_state():
+                return self._error("Invalid OAuth state.", 400)
+
+            if flask.request.args.get("error"):
+                return view_function(None, *args, **kwargs)
+
+            code = flask.request.args.get("code")
+            if not code:
+                return self._error("GitHub did not return an authorization code.", 400)
+
+            configuration = OAuthConfiguration.from_app()
+            if configuration is None:
+                return self._error("GitHub OAuth is not configured.", 500)
+
+            token_auth = self._exchange_code(code, configuration)
+            self.store.save(token_auth)
+            return view_function(token_auth.token, *args, **kwargs)
+
+        return wrapped
+
     def logout(self) -> None:
         self.store.clear()
+
+    @staticmethod
+    def _valid_state() -> bool:
+        expected = flask.session.pop(STATE_SESSION_KEY, None)
+        received = flask.request.args.get("state", "")
+        return isinstance(expected, str) and hmac.compare_digest(expected, received)
+
+    @staticmethod
+    def _exchange_code(
+        code: str, configuration: OAuthConfiguration
+    ) -> OAuthTokenAuthStrategy:
+        oauth_app = OAuthAppAuthStrategy(
+            client_id=configuration.client_id,
+            client_secret=configuration.client_secret,
+        )
+        return oauth_app.as_web_user(
+            code, redirect_uri=configuration.callback_url
+        ).exchange_token(GitHub(auth=oauth_app))
 
     def _handle_expired(self, error: AuthExpiredError) -> Response:
         self.logout()
