@@ -58,3 +58,7 @@ class TokenStore:
     @staticmethod
     def clear() -> None:
         flask.session.pop(TOKEN_SESSION_KEY, None)
+
+    @staticmethod
+    def exists() -> bool:
+        return TOKEN_SESSION_KEY in flask.session
