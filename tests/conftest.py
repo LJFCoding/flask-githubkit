@@ -1,12 +1,14 @@
 import flask
 import pytest
 
-from flask_githubkit import GitHubOAuth
+import flask_githubkit
 
 
 @pytest.fixture
 def oauth():
-    return GitHubOAuth(scope="read:user repo", login_endpoint="login")
+    return flask_githubkit.GitHubOAuth(
+        scope="read:user repo", login_endpoint="login"
+    )
 
 
 @pytest.fixture

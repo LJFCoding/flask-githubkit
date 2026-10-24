@@ -1,9 +1,9 @@
-from urllib.parse import parse_qs, urlparse
+import urllib.parse
 
 import flask
-from githubkit.exception import AuthExpiredError
-
-from flask_githubkit import auth as auth_module
+import githubkit
+import githubkit.auth
+import githubkit.exception
 
 SAMPLE_TOKEN = {
     "token": "token",
@@ -17,8 +17,8 @@ def test_login_redirects_to_github_with_state_scope_and_callback(http_client):
     response = http_client.get("/login")
 
     assert response.status_code == 302
-    redirect = urlparse(response.headers["Location"])
-    query = parse_qs(redirect.query)
+    redirect = urllib.parse.urlparse(response.headers["Location"])
+    query = urllib.parse.parse_qs(redirect.query)
     assert (redirect.scheme, redirect.netloc, redirect.path) == (
         "https",
         "github.com",
@@ -103,8 +103,8 @@ def test_callback_exchanges_code_and_stores_tokens(http_client, monkeypatch):
         def __init__(self, *, auth):
             self.auth = auth
 
-    monkeypatch.setattr(auth_module, "OAuthAppAuthStrategy", FakeOAuthApp)
-    monkeypatch.setattr(auth_module, "GitHub", FakeGitHub)
+    monkeypatch.setattr(githubkit.auth, "OAuthAppAuthStrategy", FakeOAuthApp)
+    monkeypatch.setattr(githubkit, "GitHub", FakeGitHub)
 
     response = http_client.get("/callback?state=expected&code=oauth-code")
 
@@ -186,7 +186,7 @@ def test_expired_refresh_token_clears_session_and_redirects_to_login(
 ):
     @app.route("/expired")
     def expired():
-        raise AuthExpiredError("Refresh token expired.")
+        raise githubkit.exception.AuthExpiredError("Refresh token expired.")
 
     with http_client.session_transaction() as session:
         session["flask_githubkit.token"] = SAMPLE_TOKEN
