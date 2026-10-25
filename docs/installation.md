@@ -3,7 +3,7 @@
 ## Install flask-githubkit
 
 The package requires Python 3.10 or later. Install the latest release from
-PyPI:
+[PyPI](https://pypi.org/project/flask-githubkit/):
 
 ```console
 python -m pip install flask-githubkit
@@ -12,14 +12,14 @@ python -m pip install flask-githubkit
 To pin the version used by your project:
 
 ```console
-python -m pip install "flask-githubkit==0.1.3"
+python -m pip install "flask-githubkit==0.1.5"
 ```
 
 You can also install a release directly from GitHub:
 
 ```console
 python -m pip install \
-  "flask-githubkit @ git+https://github.com/LJFCoding/flask-githubkit.git@v0.1.3"
+  "flask-githubkit @ git+https://github.com/LJFCoding/flask-githubkit.git@v0.1.5"
 ```
 
 The package installs Flask, GitHubKit and httpx as dependencies.
