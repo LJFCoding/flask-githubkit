@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flask-githubkit"
-version = "0.1.3"
+version = "0.1.4"
 description = "Flask extension for GitHub OAuth login, built on GitHubKit. Handles expiring-token refresh and server-side sessions."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "LJFCoding" }]
-keywords = ["flask", "github", "githubkit", "oauth", "authentication"]
+keywords = ["flask", "flask-extension", "github", "githubkit", "oauth", "authentication"]
 classifiers = [
   "Framework :: Flask",
   "Intended Audience :: Developers",
