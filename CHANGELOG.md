@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.5
+
+- Link the docs and README to the PyPI project page.
+- Add a PyPI entry to the project URLs.
+- Update the pinned-version examples.
+
 ## 0.1.4
 
 - Added html_meta myst description to improve SEO

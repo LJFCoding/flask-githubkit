@@ -8,7 +8,8 @@ Documentation: [flask-githubkit.readthedocs.io](https://flask-githubkit.readthed
 
 ## Installation
 
-Install the latest release from PyPI:
+Install the latest release from
+[PyPI](https://pypi.org/project/flask-githubkit/):
 
 ```console
 pip install flask-githubkit
@@ -17,8 +18,8 @@ pip install flask-githubkit
 To pin a release or install directly from GitHub:
 
 ```console
-pip install "flask-githubkit==0.1.3"
-pip install "flask-githubkit @ git+https://github.com/LJFCoding/flask-githubkit.git@v0.1.3"
+pip install "flask-githubkit==0.1.5"
+pip install "flask-githubkit @ git+https://github.com/LJFCoding/flask-githubkit.git@v0.1.5"
 ```
 
 It requires Python 3.10+ and installs Flask, GitHubKit and httpx.
