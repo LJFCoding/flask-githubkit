@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.4
+
+- Added html_meta myst description to improve SEO
+- Canonical link to reduce SEO splittage
+
 ## 0.1.3
 
 - Add a Sphinx documentation site with installation, quick start,

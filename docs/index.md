@@ -1,3 +1,9 @@
+---
+myst:
+  html_meta:
+    description: "Flask extension for GitHub OAuth login built on GitHubKit, with expiring-token refresh and server-side sessions."
+---
+
 # flask-githubkit
 
 **GitHub OAuth for Flask, with GitHubKit's typed API client.**

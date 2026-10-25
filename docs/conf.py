@@ -1,3 +1,5 @@
+import os
+
 project = "flask-githubkit"
 author = "LJFCoding"
 release = "0.1.3"
@@ -6,6 +8,10 @@ extensions = [
     "myst_parser",
     "sphinx.ext.autodoc",
 ]
+
+# Read the Docs sets this to the default version's URL, giving every page
+# a canonical link so latest/ and stable/ are not indexed as duplicates.
+html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "")
 
 root_doc = "index"
 myst_heading_anchors = 3
