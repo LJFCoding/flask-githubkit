@@ -36,7 +36,6 @@ app.config.from_mapping(
     SECRET_KEY=os.environ["SECRET_KEY"],
     GITHUB_CLIENT_ID=os.environ["GITHUB_CLIENT_ID"],
     GITHUB_CLIENT_SECRET=os.environ["GITHUB_CLIENT_SECRET"],
-    GITHUB_REDIRECT_URI="http://localhost:5000/callback",
     GITHUB_SCOPE="read:user",
 )
 
@@ -97,14 +96,14 @@ GitHub.
 ```{note}
 On recent macOS versions, AirPlay Receiver can occupy port 5000. If Flask
 cannot bind to it, disable AirPlay Receiver or run on another port, and
-use the same port in `GITHUB_REDIRECT_URI` and the OAuth App's callback URL.
+use the same port in the OAuth App's callback URL.
 ```
 
 ## What happens during login
 
 1. `@github.login` redirects the browser to GitHub and stores a random
    `state` value in the Flask session.
-2. GitHub sends the browser back to `GITHUB_REDIRECT_URI` with an
+2. GitHub sends the browser back to the `@github.callback` route with an
    authorization code and the `state`.
 3. `@github.callback` checks and consumes the `state`. If it is valid, the
    extension exchanges the code for a token, saves the token in the session,

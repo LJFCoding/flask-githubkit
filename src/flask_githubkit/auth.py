@@ -20,6 +20,8 @@ AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
 CLIENT_ATTR = "flask_githubkit_client"
 LOGIN_VIEW = "login"
 LOGIN_MARK = "_flask_githubkit_login"
+CALLBACK_MARK = "_flask_githubkit_callback"
+CALLBACK_VIEW_KEY = "GITHUB_CALLBACK_VIEW"
 
 ViewResult = (
     werkzeug.wrappers.Response | tuple[werkzeug.wrappers.Response, int]
@@ -131,6 +133,7 @@ class GitHub:
             flask_githubkit.store.Token.save(strategy)
             return view_func(strategy.token, *args, **kwargs)
 
+        setattr(wrapper, CALLBACK_MARK, self)
         return wrapper
 
     def client(self) -> "githubkit.GitHub[typing.Any] | None":
@@ -184,20 +187,36 @@ class GitHub:
         query = urllib.parse.urlencode(
             {
                 "client_id": config.client_id,
-                "redirect_uri": config.redirect_uri,
+                "redirect_uri": self._redirect_uri(config),
                 "scope": self.scope or config.scope,
                 "state": flask_githubkit.store.State.new(),
             }
         )
         return f"{AUTHORIZE_URL}?{query}"
 
+    def _redirect_uri(self, config: flask_githubkit.config.Config) -> str:
+        """Return ``GITHUB_REDIRECT_URI``, or the ``@callback`` view's URL."""
+        if config.redirect_uri:
+            return config.redirect_uri
+        app_config = flask.current_app.config
+        endpoint = app_config.get(CALLBACK_VIEW_KEY)
+        if endpoint is None:
+            endpoint = self._decorated_endpoint(CALLBACK_MARK)
+            if endpoint is None:
+                raise RuntimeError(
+                    "No callback URL. Decorate the callback view with "
+                    "@github.callback or set GITHUB_REDIRECT_URI."
+                )
+            app_config[CALLBACK_VIEW_KEY] = endpoint
+        return flask.url_for(endpoint, _external=True)
+
     @staticmethod
     def _check_state() -> bool:
         received = flask.request.args.get("state", "")
         return flask_githubkit.store.State.check(received)
 
-    @staticmethod
     def _exchange(
+        self,
         code: str,
         config: flask_githubkit.config.Config,
     ) -> githubkit.auth.OAuthTokenAuthStrategy:
@@ -206,7 +225,7 @@ class GitHub:
             client_secret=config.client_secret,
         )
         return app.as_web_user(
-            code, redirect_uri=config.redirect_uri
+            code, redirect_uri=self._redirect_uri(config)
         ).exchange_token(githubkit.GitHub(auth=app))
 
     def _expired(
@@ -228,10 +247,10 @@ class GitHub:
                 "blueprint named 'auth'."
             ) from build_error
 
-    def _decorated_endpoint(self) -> str | None:
-        """Return the endpoint of the view decorated with ``@login``."""
+    def _decorated_endpoint(self, mark: str = LOGIN_MARK) -> str | None:
+        """Return the endpoint of the view tagged with ``mark``."""
         for endpoint, view in flask.current_app.view_functions.items():
-            if getattr(view, LOGIN_MARK, None) is self:
+            if getattr(view, mark, None) is self:
                 return endpoint
         return None
 
