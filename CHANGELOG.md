@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.6
+
+- `GITHUB_REDIRECT_URI` is now optional. When unset, the callback URL is
+  built from the `@github.callback` route and the current host. The
+  endpoint is found once and kept in `GITHUB_CALLBACK_VIEW`.
+- `Config.redirect_uri` is now `None` when `GITHUB_REDIRECT_URI` is unset.
+- Add a PyPI install link to the docs home page.
+- Document behind-a-proxy setup with `ProxyFix`.
+- Drop `GITHUB_REDIRECT_URI` from the examples and quick start.
+
 ## 0.1.5
 
 - Link the docs and README to the PyPI project page.
