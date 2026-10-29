@@ -22,7 +22,6 @@ def create_app() -> flask.Flask:
         SECRET_KEY=os.environ["SECRET_KEY"],
         GITHUB_CLIENT_ID=os.environ["GITHUB_CLIENT_ID"],
         GITHUB_CLIENT_SECRET=os.environ["GITHUB_CLIENT_SECRET"],
-        GITHUB_REDIRECT_URI="http://localhost:5000/callback",
         # Optional. Both can also be passed to GitHub(...).
         GITHUB_SCOPE="read:user user:email",
         GITHUB_LOGIN_VIEW="login",

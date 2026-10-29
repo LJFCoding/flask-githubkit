@@ -18,8 +18,8 @@ pip install flask-githubkit
 To pin a release or install directly from GitHub:
 
 ```console
-pip install "flask-githubkit==0.1.5"
-pip install "flask-githubkit @ git+https://github.com/LJFCoding/flask-githubkit.git@v0.1.5"
+pip install "flask-githubkit==0.1.6"
+pip install "flask-githubkit @ git+https://github.com/LJFCoding/flask-githubkit.git@v0.1.6"
 ```
 
 It requires Python 3.10+ and installs Flask, GitHubKit and httpx.
@@ -47,8 +47,9 @@ apps are supported.
 
 ## Quick start
 
-Register a GitHub OAuth App and set its callback URL to the value of
-`GITHUB_REDIRECT_URI`. Enable **Expire user authorization tokens** in the
+Register a GitHub OAuth App and set its callback URL to your
+`@github.callback` route, for example `https://example.com/callback`.
+Enable **Expire user authorization tokens** in the
 OAuth App settings if you want GitHub to issue refresh tokens.
 
 ```python
@@ -60,7 +61,6 @@ app.config.update(
     SECRET_KEY="load-this-from-a-secret-manager",
     GITHUB_CLIENT_ID="your-client-id",
     GITHUB_CLIENT_SECRET="load-this-from-a-secret-manager",
-    GITHUB_REDIRECT_URI="https://example.com/callback",
     GITHUB_SCOPE="read:user",
 )
 
@@ -110,7 +110,6 @@ def create_app():
         SECRET_KEY="load-this-from-a-secret-manager",
         GITHUB_CLIENT_ID="your-client-id",
         GITHUB_CLIENT_SECRET="load-this-from-a-secret-manager",
-        GITHUB_REDIRECT_URI="https://example.com/callback",
         GITHUB_SCOPE="read:user",
     )
     github.init_app(app)
@@ -154,7 +153,7 @@ Calling the API goes through GitHubKit, so see its
 | --- | --- | --- |
 | `GITHUB_CLIENT_ID` | Yes | GitHub OAuth App client ID |
 | `GITHUB_CLIENT_SECRET` | Yes | GitHub OAuth App client secret |
-| `GITHUB_REDIRECT_URI` | Yes | Callback URL registered with the OAuth App |
+| `GITHUB_REDIRECT_URI` | No | Callback URL registered with the OAuth App. Default: the `@github.callback` route on the current host. |
 | `SECRET_KEY` | Yes | Flask session signing key |
 | `GITHUB_SCOPE` | No | Space-separated OAuth scopes to request. Default `read:user`. |
 | `GITHUB_LOGIN_VIEW` | No | Endpoint name users are sent to when their refresh token has expired. Usually not needed: see below. It is an endpoint name such as `auth.login`, not a URL. |

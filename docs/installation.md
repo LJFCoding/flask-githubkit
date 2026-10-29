@@ -12,14 +12,14 @@ python -m pip install flask-githubkit
 To pin the version used by your project:
 
 ```console
-python -m pip install "flask-githubkit==0.1.5"
+python -m pip install "flask-githubkit==0.1.6"
 ```
 
 You can also install a release directly from GitHub:
 
 ```console
 python -m pip install \
-  "flask-githubkit @ git+https://github.com/LJFCoding/flask-githubkit.git@v0.1.5"
+  "flask-githubkit @ git+https://github.com/LJFCoding/flask-githubkit.git@v0.1.6"
 ```
 
 The package installs Flask, GitHubKit and httpx as dependencies.
@@ -39,8 +39,10 @@ For example:
 | `/callback` | `http://localhost:5000/callback` |
 | Blueprint route `/auth/callback` | `http://localhost:5000/auth/callback` |
 
-The callback URL must match the `GITHUB_REDIRECT_URI` value used by your
-application. For production, use your application's HTTPS URL.
+The callback URL must match the URL your application uses. By default
+that is the `@github.callback` route on the current host, or
+`GITHUB_REDIRECT_URI` if you set it. For production, use your application's
+HTTPS URL.
 
 Copy the OAuth App's **Client ID** and **Client secret** into your local
 environment or secrets manager. Never commit the client secret to Git.

@@ -11,16 +11,18 @@ SCOPE = "read:user"
 class Config:
     """OAuth App settings read from the Flask app config.
 
-    Reads ``GITHUB_CLIENT_ID``, ``GITHUB_CLIENT_SECRET`` and
-    ``GITHUB_REDIRECT_URI``. ``SECRET_KEY`` must also be set, because
-    the OAuth state and tokens are kept in ``flask.session``.
+    Reads ``GITHUB_CLIENT_ID`` and ``GITHUB_CLIENT_SECRET``.
+    ``SECRET_KEY`` must also be set, because the OAuth state and
+    tokens are kept in ``flask.session``. ``GITHUB_REDIRECT_URI`` is
+    optional: without it the callback URL is built from the view
+    decorated with ``@callback`` and the current host.
     ``GITHUB_SCOPE`` is optional: the space-separated OAuth scope to
     request, ``read:user`` by default.
     """
 
     client_id: str
     client_secret: str
-    redirect_uri: str
+    redirect_uri: str | None = None
     scope: str = SCOPE
 
     @staticmethod
@@ -33,15 +35,12 @@ class Config:
         secret_key = app_config.get("SECRET_KEY")
         if not all(
             isinstance(value, str) and value
-            for value in (
-                client_id,
-                client_secret,
-                redirect_uri,
-                scope,
-                secret_key,
-            )
+            for value in (client_id, client_secret, scope, secret_key)
         ):
             return None
         return Config(
-            str(client_id), str(client_secret), str(redirect_uri), str(scope)
+            str(client_id),
+            str(client_secret),
+            str(redirect_uri) if redirect_uri else None,
+            str(scope),
         )

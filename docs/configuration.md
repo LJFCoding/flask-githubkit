@@ -10,14 +10,42 @@ config. Configure the app before serving requests.
 | `SECRET_KEY` | Yes | — | Flask session signing key. Keep it secret and stable. |
 | `GITHUB_CLIENT_ID` | Yes | — | Client ID from your GitHub OAuth App. |
 | `GITHUB_CLIENT_SECRET` | Yes | — | Client secret from your GitHub OAuth App. |
-| `GITHUB_REDIRECT_URI` | Yes | — | Absolute callback URL registered with the OAuth App. |
+| `GITHUB_REDIRECT_URI` | No | — | Absolute callback URL registered with the OAuth App. Defaults to the `@github.callback` route on the current host. Set it behind a proxy that hides the public host. |
 | `GITHUB_SCOPE` | No | `read:user` | Space-separated OAuth scopes requested at login. |
 | `GITHUB_LOGIN_VIEW` | No | Decorated login view, otherwise `login` | Flask endpoint to use when a refresh token has expired. |
 
-The client ID, client secret, redirect URI, scope and `SECRET_KEY` must be
-non-empty strings. If any is missing or empty, the login route returns a
+The client ID, client secret, scope and `SECRET_KEY` must be non-empty
+strings. If any is missing or empty, the login route returns a
 JSON error with HTTP 500, the callback route returns the same error once its
 `state` check passes, and `github.client()` returns `None`.
+
+## Callback URL
+
+You do not need to set `GITHUB_REDIRECT_URI`. When it is unset, the
+extension finds the route decorated with `@github.callback` and builds its
+URL from the current request's host. The endpoint is found once, on the
+first request, and kept in `GITHUB_CALLBACK_VIEW`. If no route is decorated
+and `GITHUB_REDIRECT_URI` is unset, the login route raises a `RuntimeError`.
+
+The URL must match the callback URL registered with the OAuth App.
+
+### Behind a proxy
+
+Flask builds the host from the incoming request. Behind a reverse proxy
+that terminates HTTPS or rewrites the host, Flask may see
+`http://127.0.0.1:8000` instead of your public address, and GitHub rejects
+the callback with a `redirect_uri` mismatch. Tell Flask to trust the
+proxy's forwarded headers:
+
+```python
+from werkzeug.middleware.proxy_fix import ProxyFix
+
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+```
+
+Only do this when a proxy you control sets those headers, because clients
+can forge them otherwise. Alternatively, set `GITHUB_REDIRECT_URI` to the
+public callback URL, which is then used as-is.
 
 ## Initialize the extension
 

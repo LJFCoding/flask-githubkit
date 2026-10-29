@@ -48,7 +48,6 @@ def create_app() -> flask.Flask:
         SECRET_KEY=os.environ["SECRET_KEY"],
         GITHUB_CLIENT_ID=os.environ["GITHUB_CLIENT_ID"],
         GITHUB_CLIENT_SECRET=os.environ["GITHUB_CLIENT_SECRET"],
-        GITHUB_REDIRECT_URI="http://localhost:5000/auth/callback",
     )
     github.init_app(app)
     app.register_blueprint(auth)

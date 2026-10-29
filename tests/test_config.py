@@ -6,9 +6,17 @@ import flask_githubkit
 KEYS = (
     "GITHUB_CLIENT_ID",
     "GITHUB_CLIENT_SECRET",
-    "GITHUB_REDIRECT_URI",
     "SECRET_KEY",
 )
+
+
+def test_config_redirect_uri_is_optional(app):
+    del app.config["GITHUB_REDIRECT_URI"]
+
+    with app.app_context():
+        config = flask_githubkit.Config.from_current_app()
+
+    assert config.redirect_uri is None
 
 
 def test_config_reads_the_app_settings(app):
