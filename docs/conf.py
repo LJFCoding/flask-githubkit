@@ -2,7 +2,7 @@ import os
 
 project = "flask-githubkit"
 author = "LJFCoding"
-release = "0.1.3"
+release = "0.1.6"
 
 extensions = [
     "myst_parser",

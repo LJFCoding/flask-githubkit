@@ -8,6 +8,9 @@ myst:
 
 **GitHub OAuth for Flask, with GitHubKit's typed API client.**
 
+Install it from [PyPI](https://pypi.org/project/flask-githubkit/) with
+`python -m pip install flask-githubkit`.
+
 `flask-githubkit` connects Flask routes to GitHub's OAuth flow and API. It
 validates the OAuth callback's `state`, stores user tokens in the Flask
 session, and saves refreshed token values after API calls.

@@ -37,6 +37,39 @@ def test_login_redirects_to_github_with_state_scope_and_callback(http_client):
         assert session["flask_githubkit.state"] == query["state"][0]
 
 
+def test_login_derives_callback_url_from_host_when_redirect_uri_unset(
+    app, http_client
+):
+    del app.config["GITHUB_REDIRECT_URI"]
+
+    response = http_client.get("/login", base_url="https://example.com")
+
+    query = urllib.parse.parse_qs(
+        urllib.parse.urlparse(response.headers["Location"]).query
+    )
+    assert query["redirect_uri"] == ["https://example.com/callback"]
+
+
+def test_callback_endpoint_is_stored_in_config_once(app, http_client):
+    del app.config["GITHUB_REDIRECT_URI"]
+
+    http_client.get("/login")
+
+    assert app.config["GITHUB_CALLBACK_VIEW"] == "callback"
+    del app.view_functions["callback"]
+    app.view_functions["callback"] = lambda: ""
+    response = http_client.get("/login")
+    assert response.status_code == 302
+
+
+def test_login_needs_callback_view_when_redirect_uri_unset(app, http_client):
+    del app.config["GITHUB_REDIRECT_URI"]
+    del app.view_functions["callback"]
+
+    with pytest.raises(RuntimeError, match="No callback URL"):
+        http_client.get("/login")
+
+
 def test_login_reports_missing_configuration(app, http_client):
     app.config["GITHUB_CLIENT_ID"] = None
 

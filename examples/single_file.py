@@ -17,7 +17,6 @@ app.config.update(
     SECRET_KEY=os.environ["SECRET_KEY"],
     GITHUB_CLIENT_ID=os.environ["GITHUB_CLIENT_ID"],
     GITHUB_CLIENT_SECRET=os.environ["GITHUB_CLIENT_SECRET"],
-    GITHUB_REDIRECT_URI="http://localhost:5000/callback",
 )
 github = flask_githubkit.GitHub(app)
 
